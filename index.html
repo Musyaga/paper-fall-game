@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>PAPER FALL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink-blue: #1976d2;
+            --ink-red: #d32f2f;
+            --paper: #fcf9f2;
+            --text-dark: #2c3e50;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: none; font-family: 'Kalam', cursive; }
+        
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--paper); color: var(--text-dark); overscroll-behavior: none; }
+        
+        #gameCanvas { display: block; width: 100%; height: 100%; object-fit: cover; }
+        
+        .layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; }
+        .interactive { pointer-events: auto; }
+        .hidden { display: none !important; }
+        
+        #hud { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
+        .score-container { display: flex; align-items: flex-end; }
+        .hud-score { font-size: 3.5rem; font-weight: 700; line-height: 1; color: #111; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+        .hud-combo { font-size: 1.5rem; font-weight: 700; color: var(--ink-red); margin-left: 10px; padding-bottom: 5px; display: none; }
+        
+        .panel {
+            background: #ffffff; border: 4px solid var(--text-dark); 
+            border-radius: 10px 25px 15px 30px; 
+            padding: 40px 30px; margin: auto; max-width: 90%; min-width: 320px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 8px 8px 0px rgba(44, 62, 80, 0.2);
+        }
+        
+        h1 { font-weight: 700; font-size: 4rem; letter-spacing: 1px; margin-bottom: 5px; color: #1a1a1a; text-align: center; line-height: 1; transform: rotate(-2deg); text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+        h2 { font-weight: 700; font-size: 2.2rem; color: var(--ink-red); margin-bottom: 20px; text-transform: uppercase; text-decoration: underline; text-decoration-style: wavy; }
+        p { color: #555; margin-bottom: 30px; text-align: center; font-size: 1.3rem; }
+        
+        .btn {
+            background: transparent; border: 3px solid var(--text-dark); color: var(--text-dark);
+            padding: 12px 40px; font-size: 1.5rem; font-weight: 700; text-transform: uppercase;
+            border-radius: 8px 15px 10px 12px; cursor: pointer; transition: all 0.1s ease;
+            box-shadow: 4px 4px 0px rgba(44, 62, 80, 0.2); margin-bottom: 15px; width: 100%; max-width: 250px;
+        }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px rgba(44, 62, 80, 0.2); }
+        .btn:hover { background: var(--text-dark); color: #fff; transform: translate(-2px, -2px); box-shadow: 6px 6px 0px rgba(44, 62, 80, 0.3); }
+        
+        .btn-play { background: #ffeb3b; color: #111; border-color: #111; font-size: 1.8rem; transform: rotate(1deg); }
+        .btn-play:hover { background: #fbc02d; color: #111; }
+        
+        .stat-box { background: #fff; border: 3px solid var(--text-dark); padding: 10px 20px; border-radius: 5px 12px 8px 5px; margin-bottom: 15px; width: 100%; display: flex; justify-content: space-between; font-weight: 700; font-size: 1.2rem; box-shadow: 3px 3px 0px rgba(0,0,0,0.1); }
+        .stat-label { color: #555; }
+        
+        #debug-panel { position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); border: 2px solid var(--ink-red); color: var(--text-dark); padding: 10px; font-family: monospace; font-size: 12px; z-index: 100; pointer-events: none; border-radius: 5px; display: none; font-weight: bold; }
+        
+        @media (max-width: 500px) { h1 { font-size: 3.2rem; } .hud-score { font-size: 3rem; } .panel { padding: 30px 20px; } }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+    <div id="debug-panel"></div>
+
+    <div id="uiLayer" class="layer">
+        
+        <div id="hud" class="hidden">
+            <div class="score-container">
+                <div class="hud-score" id="hudScore">0</div>
+                <div class="hud-combo" id="hudCombo">x1.0</div>
+            </div>
+        </div>
+
+        <div id="screen-menu" class="panel interactive">
+            <h1>PAPER FALL</h1>
+            <p>DOODLE SURVIVAL</p>
+            <div class="stat-box" style="justify-content: center; margin-bottom: 30px; border-style: dashed;">
+                <span class="stat-label" style="margin-right: 10px;">EN İYİ SKOR:</span>
+                <span id="menuHighScore" style="color: var(--ink-blue);">0</span>
+            </div>
+            <button class="btn btn-play" id="btn-play">OYNA</button>
+        </div>
+
+        <div id="screen-gameover" class="panel interactive hidden">
+            <h2>OYUN BİTTİ</h2>
+            <div class="hud-score" id="goScore" style="margin-bottom: 25px; font-size: 4.5rem; transform: rotate(-2deg);">0</div>
+            
+            <div style="width: 100%; max-width: 300px; margin-bottom: 20px;">
+                <div class="stat-box">
+                    <span class="stat-label">REKOR</span>
+                    <span id="goBestScore" style="color: var(--ink-blue);">0</span>
+                </div>
+            </div>
+
+            <div style="display:flex; align-items:center; width: 100%; max-width: 300px; flex-direction: column;">
+                <button class="btn btn-play" id="btn-retry">TEKRAR DENE</button>
+                <button class="btn" id="btn-menu">ANA MENÜ</button>
+            </div>
+        </div>
+
+        <div id="screen-pause" class="panel interactive hidden">
+            <h2>MOLA VERİLDİ</h2>
+            <button class="btn btn-play" id="btn-resume">DEVAM ET</button>
+        </div>
+
+    </div>
+
+<script>
+"use strict";
+
+const DEBUG_MODE = false;
+
+const CONFIG = {
+    controls: { instantFollow: false, followSpeed: 24 },
+    physics: { gravity: 2400, jumpVelocity: 950, maxHorizontalSpeed: 800, baseScrollSpeed: 180, maxScrollSpeed: 700, gapY: 155 },
+    performance: { maxDPR: 1.0, maxDt: 0.033, particleLimit: 40 },
+    colors: { paper: '#fcf9f2', player: '#1976d2', normalFill: '#e8f5e9', normalStroke: '#388e3c', movingFill: '#e1f5fe', movingStroke: '#0288d1', fragileFill: '#efebe9', fragileStroke: '#795548', spikeFill: '#fce4ec', spikeStroke: '#b71c1c' },
+    saveVersion: 8
+};
+
+// YENİ: Zıplama gücü (effectiveJumpVelocity) ve platform aralığı (effectiveGapY) dinamik olarak state içinde tutulur.
+const STATE = { 
+    mode: 'MENU', score: 0, bestScore: 0, time: 0, scrollSpeed: CONFIG.physics.baseScrollSpeed, lastPlatformX: 0, 
+    combo: 0, comboMultiplier: 1, fallDistance: 0,
+    effectiveJumpVelocity: CONFIG.physics.jumpVelocity,
+    effectiveGapY: CONFIG.physics.gapY
+};
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false }); 
+let cw, ch, dpr;
+let bgPattern = null;
+
+function createBackgroundPattern() {
+    const patCanvas = document.createElement('canvas');
+    patCanvas.width = 40; patCanvas.height = 40;
+    const pCtx = patCanvas.getContext('2d', { alpha: false });
+    pCtx.fillStyle = CONFIG.colors.paper; pCtx.fillRect(0, 0, 40, 40);
+    pCtx.strokeStyle = 'rgba(25, 118, 210, 0.15)'; pCtx.lineWidth = 1;
+    pCtx.beginPath(); pCtx.moveTo(0, 0); pCtx.lineTo(40, 0); pCtx.stroke();
+    bgPattern = ctx.createPattern(patCanvas, 'repeat');
+}
+
+function initCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, CONFIG.performance.maxDPR);
+    cw = rect.width; ch = rect.height;
+    canvas.width = cw * dpr; canvas.height = ch * dpr;
+    ctx.scale(dpr, dpr);
+    createBackgroundPattern(); 
+}
+
+let resizeTimeout, lastInnerWidth = window.innerWidth;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        if (window.innerWidth !== lastInnerWidth) {
+            lastInnerWidth = window.innerWidth; initCanvas();
+            if (player.x > cw) player.x = cw - player.radius;
+        }
+    }, 200);
+});
+
+const Storage = {
+    key: 'paperFallSave_v' + CONFIG.saveVersion,
+    load() { try { const data = localStorage.getItem(this.key); if (data) { const p = JSON.parse(data); if (typeof p.bestScore === 'number') STATE.bestScore = p.bestScore; } } catch(e) {} },
+    save() { try { localStorage.setItem(this.key, JSON.stringify({ bestScore: STATE.bestScore })); } catch(e) {} }
+};
+
+const HapticSys = { trigger(pattern) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {} } };
+
+const ScreenShake = {
+    intensity: 0, duration: 0, offsetX: 0, offsetY: 0,
+    trigger(intensity, duration) { this.intensity = intensity; this.duration = duration; },
+    update(dt) {
+        if (this.duration > 0) {
+            this.duration -= dt;
+            let cur = this.intensity * (this.duration / Math.max(0.001, this.duration + dt));
+            this.offsetX = (Math.random() - 0.5) * cur * 2;
+            this.offsetY = (Math.random() - 0.5) * cur * 2;
+            if (this.duration <= 0) { this.offsetX = 0; this.offsetY = 0; this.intensity = 0; }
+        }
+    }
+};
+
+const AudioSys = {
+    ctx: null, pool: [], poolSize: 5,
+    init() { 
+        try { 
+            if (!this.ctx) { 
+                const AC = window.AudioContext || window.webkitAudioContext; 
+                if (AC) this.ctx = new AC(); 
+                for(let i=0; i<this.poolSize; i++) {
+                    const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                    gain.gain.value = 0; osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); this.pool.push({ osc, gain, releaseTime: 0 });
+                }
+            } 
+            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); 
+        } catch(e) {} 
+    },
+    play(type) {
+        if (!this.ctx || this.ctx.state !== 'running') return;
+        try {
+            const now = this.ctx.currentTime;
+            let node = this.pool.find(p => p.releaseTime < now);
+            if (!node) return; 
+            
+            if (type === 'land') {
+                node.osc.type = 'triangle'; node.frequency.setValueAtTime(300, now); node.osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
+                node.gain.gain.setValueAtTime(0.1, now); node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                node.releaseTime = now + 0.05;
+            } else if (type === 'break') {
+                node.osc.type = 'sawtooth'; node.osc.frequency.setValueAtTime(100, now); node.osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                node.gain.gain.setValueAtTime(0.15, now); node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                node.releaseTime = now + 0.1;
+            } else if (type === 'death') {
+                node.osc.type = 'square'; node.osc.frequency.setValueAtTime(150, now); node.osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+                node.gain.gain.setValueAtTime(0.2, now); node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                node.releaseTime = now + 0.3;
+            }
+        } catch(e) {}
+    }
+};
+
+const Input = {
+    keys: { left: false, right: false }, pointerX: null,
+    init() {
+        window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true; });
+        window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false; });
+        const handlePointer = (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            if (e.type !== 'pointerup' && e.type !== 'pointercancel') e.preventDefault();
+            this.pointerX = (e.type === 'pointerdown' || e.type === 'pointermove') ? e.clientX : null;
+        };
+        window.addEventListener('pointerdown', handlePointer, {passive: false});
+        window.addEventListener('pointermove', handlePointer, {passive: false});
+        window.addEventListener('pointerup', handlePointer);
+        window.addEventListener('pointercancel', handlePointer);
+        document.addEventListener('visibilitychange', () => { if (document.hidden && STATE.mode === 'PLAYING') pauseGame(); });
+    },
+    getAxis() { let axis = 0; if (this.keys.left) axis = -1; if (this.keys.right) axis = 1; return axis; }
+};
+
+const player = {
+    x: 0, y: 0, vx: 0, vy: 0, radius: 14, prevY: 0,
+    reset() { this.x = cw / 2; this.y = ch / 2 - 100; this.prevY = this.y; this.vx = 0; this.vy = 0; },
+    update(dt) {
+        this.prevY = this.y;
+        if (Input.pointerX !== null) {
+            let targetX = Math.max(this.radius, Math.min(cw - this.radius, Input.pointerX));
+            if (CONFIG.controls.instantFollow) {
+                this.vx = (targetX - this.x) / dt; this.x = targetX;
+            } else {
+                let diff = targetX - this.x; this.x += diff * CONFIG.controls.followSpeed * dt; this.vx = diff * 15; 
+            }
+        } else {
+            const axis = Input.getAxis(); let targetVx = axis * CONFIG.physics.maxHorizontalSpeed;
+            if (axis !== 0) this.vx += (targetVx - this.vx) * 25 * dt; else this.vx -= this.vx * 20 * dt;
+            this.x += this.vx * dt;
+            if (this.x < this.radius) { this.x = this.radius; this.vx = 0; }
+            if (this.x > cw - this.radius) { this.x = cw - this.radius; this.vx = 0; }
+        }
+        
+        // Zıplama gücü ne kadar artarsa artsın yerçekimi standart kalır.
+        this.vy += CONFIG.physics.gravity * dt;
+        this.y += (this.vy + STATE.scrollSpeed) * dt; 
+    },
+    render(ctx) {
+        let px = Math.floor(this.x), py = Math.floor(this.y);
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = CONFIG.colors.player; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, this.radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#2c3e50';
+        let eyeOff = (this.vx / CONFIG.physics.maxHorizontalSpeed) * 4;
+        if (eyeOff > 6) eyeOff = 6; if (eyeOff < -6) eyeOff = -6;
+        ctx.beginPath(); ctx.arc(px - 4 + eyeOff, py - 2, 2, 0, Math.PI*2); ctx.fill(); 
+        ctx.beginPath(); ctx.arc(px + 4 + eyeOff, py - 2, 2, 0, Math.PI*2); ctx.fill(); 
+        ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(px + eyeOff, py + 3, 4, 0.2, Math.PI - 0.2); ctx.stroke(); 
+    }
+};
+
+class Platform {
+    constructor(y, type, w, x) {
+        this.y = y; this.type = type; this.w = w; this.h = 16; this.x = x;
+        this.active = true; this.timer = 0;
+        this.dir = Math.random() < 0.5 ? 1 : -1; 
+        this.speed = Math.random() * 50 + 50;
+        this.spikePoints = [];
+        if (this.type === 'SPIKE') {
+            const sps = Math.max(2, Math.floor(this.w / 16));
+            const step = this.w / sps;
+            for(let i=0; i<sps; i++){
+                let sx = (i * step);
+                this.spikePoints.push({x1: sx + 2, x2: sx + step/2, y2: -14, x3: sx + step - 2});
+            }
+        }
+    }
+    update(dt) {
+        this.y -= STATE.scrollSpeed * dt;
+        if (this.type === 'MOVING') {
+            this.x += this.dir * this.speed * dt;
+            if (this.x <= 10) { this.x = 10; this.dir = 1; }
+            if (this.x + this.w >= cw - 10) { this.x = cw - this.w - 10; this.dir = -1; }
+        }
+        if (this.type === 'FRAGILE' && this.timer > 0) {
+            this.timer += dt;
+            if (this.timer > 0.3 && this.active) { 
+                this.active = false; 
+                AudioSys.play('break'); HapticSys.trigger(20); ScreenShake.trigger(3, 0.15); 
+                ParticleSys.spawn(this.x + this.w/2, this.y, 8, CONFIG.colors.fragileStroke);
+                STATE.combo = 0; STATE.comboMultiplier = 1; DOM.updateCombo(); 
+            }
+        }
+    }
+}
+
+function renderPlatforms(ctx) {
+    const paths = {
+        nF: new Path2D(), nS: new Path2D(), nD: new Path2D(),
+        mF: new Path2D(), mS: new Path2D(), mD: new Path2D(),
+        fF: new Path2D(), fS: new Path2D(), fD: new Path2D(),
+        fsF: new Path2D(), fsS: new Path2D(), fsD: new Path2D(),
+        spBaseF: new Path2D(), spBaseS: new Path2D(),
+        spTriF: new Path2D(), spTriS: new Path2D()
+    };
+
+    for (let i = 0; i < platforms.length; i++) {
+        let p = platforms[i];
+        if (!p.active) continue;
+        let px = Math.floor(p.x), py = Math.floor(p.y), pw = Math.floor(p.w);
+
+        if (p.type === 'SPIKE') {
+            paths.spBaseF.rect(px, py, pw, p.h);
+            paths.spBaseS.rect(px, py, pw, p.h);
+            for(let j = 0; j < p.spikePoints.length; j++) {
+                let sp = p.spikePoints[j];
+                paths.spTriF.moveTo(px + sp.x1, py); paths.spTriF.lineTo(px + sp.x2, py + sp.y2); paths.spTriF.lineTo(px + sp.x3, py);
+                paths.spTriS.moveTo(px + sp.x1, py); paths.spTriS.lineTo(px + sp.x2, py + sp.y2); paths.spTriS.lineTo(px + sp.x3, py);
+            }
+        } else {
+            let fp, sp, dp;
+            if (p.type === 'NORMAL') { fp = paths.nF; sp = paths.nS; dp = paths.nD; }
+            else if (p.type === 'MOVING') { fp = paths.mF; sp = paths.mS; dp = paths.mD; }
+            else if (p.type === 'FRAGILE') {
+                if (p.timer > 0) { fp = paths.fsF; sp = paths.fsS; dp = paths.fsD; px += Math.sin(STATE.time * 60) * 3; } 
+                else { fp = paths.fF; sp = paths.fS; dp = paths.fD; }
+            }
+            fp.rect(px, py, pw, p.h); sp.rect(px, py, pw, p.h);
+            dp.moveTo(px + 10, py + 8); dp.lineTo(px + pw - 10, py + 8);
+        }
+    }
+
+    ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    
+    ctx.fillStyle = CONFIG.colors.normalFill; ctx.fill(paths.nF); ctx.strokeStyle = CONFIG.colors.normalStroke; ctx.stroke(paths.nS);
+    ctx.lineWidth = 2; ctx.stroke(paths.nD); ctx.lineWidth = 3;
+    
+    ctx.fillStyle = CONFIG.colors.movingFill; ctx.fill(paths.mF); ctx.strokeStyle = CONFIG.colors.movingStroke; ctx.stroke(paths.mS);
+    ctx.lineWidth = 2; ctx.stroke(paths.mD); ctx.lineWidth = 3;
+
+    ctx.fillStyle = CONFIG.colors.fragileFill; ctx.fill(paths.fF); ctx.strokeStyle = CONFIG.colors.fragileStroke; ctx.stroke(paths.fS);
+    ctx.lineWidth = 2; ctx.stroke(paths.fD); ctx.lineWidth = 3;
+
+    ctx.fillStyle = '#d7ccc8'; ctx.fill(paths.fsF);
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = CONFIG.colors.fragileStroke; ctx.stroke(paths.fsS);
+    ctx.lineWidth = 2; ctx.stroke(paths.fsD); ctx.lineWidth = 3; ctx.setLineDash([]);
+
+    ctx.fillStyle = CONFIG.colors.spikeFill; ctx.fill(paths.spBaseF); ctx.strokeStyle = '#2c3e50'; ctx.stroke(paths.spBaseS);
+    ctx.fillStyle = '#d32f2f'; ctx.fill(paths.spTriF); ctx.strokeStyle = CONFIG.colors.spikeStroke; ctx.stroke(paths.spTriS);
+}
+
+const ParticleSys = {
+    pool: [],
+    init() { for(let i=0; i<CONFIG.performance.particleLimit; i++) this.pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '' }); },
+    spawn(x, y, count, color) {
+        let spawned = 0;
+        for(let i=0; i<this.pool.length; i++) {
+            if(!this.pool[i].active) {
+                let p = this.pool[i];
+                p.active = true; p.x = x; p.y = y;
+                p.vx = (Math.random() - 0.5) * 300; p.vy = (Math.random() - 1.0) * 300;
+                p.life = 1.0; p.color = color;
+                spawned++; if(spawned >= count) break;
+            }
+        }
+    },
+    update(dt) {
+        for(let i=0; i<this.pool.length; i++) {
+            let p = this.pool[i];
+            if(p.active) {
+                p.vy += CONFIG.physics.gravity * 0.5 * dt; p.x += p.vx * dt; p.y += (p.vy + STATE.scrollSpeed) * dt; p.life -= dt * 2;
+                if(p.life <= 0) p.active = false;
+            }
+        }
+    },
+    render(ctx) {
+        let batches = {};
+        for(let i=0; i<this.pool.length; i++) {
+            let p = this.pool[i];
+            if(p.active) {
+                let alpha = Math.max(0.1, Math.ceil(p.life * 10) / 10).toFixed(1);
+                let key = p.color + '_' + alpha;
+                if(!batches[key]) batches[key] = new Path2D();
+                batches[key].rect(Math.floor(p.x - 3), Math.floor(p.y - 3), 6, 6);
+            }
+        }
+        for(let key in batches) {
+            let parts = key.split('_');
+            ctx.globalAlpha = parseFloat(parts[1]);
+            ctx.fillStyle = parts[0];
+            ctx.fill(batches[key]);
+        }
+        ctx.globalAlpha = 1.0;
+    },
+    reset() { for(let i=0; i<this.pool.length; i++) this.pool[i].active = false; }
+};
+
+let platforms = [];
+
+function spawnPlatform(y) {
+    // 4. İSTEK UPDATE: Diken ihtimalini hız arttıkça yükseltmek yerine kademeli olarak düşürüyoruz.
+    // Başlangıçta %15, oyun hızlandıkça %8'e kadar geriler (max hıza ulaştığında).
+    let speedRatio = (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) / (CONFIG.physics.maxScrollSpeed - CONFIG.physics.baseScrollSpeed);
+    let spikeChance = 0.15 - 0.07 * speedRatio; 
+    let spikeCap = 0.50 + spikeChance;
+
+    let type = 'NORMAL', r = Math.random();
+    if (STATE.time > 10 && r < 0.25) type = 'MOVING';
+    else if (STATE.time > 20 && r < 0.50) type = 'FRAGILE';
+    else if (STATE.time > 30 && r < spikeCap) type = 'SPIKE';
+    
+    let w = Math.random() * 60 + 70;
+    
+    // MATEMATİKSEL DOĞRULAMA (Gerçek Hava Süresi T hesaplaması)
+    let a = 0.5 * CONFIG.physics.gravity;
+    let b = 2 * STATE.scrollSpeed - STATE.effectiveJumpVelocity;
+    let c = -STATE.effectiveGapY;
+    
+    // 2. dereceden denklem ile hedefe varış süresi
+    let T = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+    let trueReach = CONFIG.physics.maxHorizontalSpeed * T;
+    
+    // Spawner, gerçek menzilin sadece %80'ini (Güvenli Alan) kullanabilir.
+    let maxReach = trueReach * 0.8; 
+
+    let minX = Math.max(10, STATE.lastPlatformX - maxReach);
+    let maxX = Math.min(cw - w - 10, STATE.lastPlatformX + maxReach);
+    if (maxX < minX) maxX = minX; 
+    
+    let x = Math.random() * (maxX - minX) + minX;
+    STATE.lastPlatformX = x;
+    platforms.push(new Platform(y, type, w, x));
+}
+
+function handleCollisions() {
+    let relativeVy = player.vy + STATE.scrollSpeed;
+    if (relativeVy > 0) {
+        for (let i = 0; i < platforms.length; i++) {
+            let p = platforms[i];
+            if (!p.active) continue;
+            if (player.x + player.radius > p.x && player.x - player.radius < p.x + p.w) {
+                let prevBottom = player.prevY + player.radius;
+                let currBottom = player.y + player.radius;
+                let hitY = (p.type === 'SPIKE') ? p.y - 12 : p.y;
+                let allowance = 25; 
+                if (prevBottom <= hitY + allowance && currBottom >= hitY - 10) {
+                    if (p.type === 'SPIKE') { triggerGameOver('SPIKE'); return; }
+                    
+                    player.y = hitY - player.radius; 
+                    // 1. İSTEK UPDATE: Sabit zıplama gücü yerine dinamik zıplama gücü atanır
+                    player.vy = -STATE.effectiveJumpVelocity; 
+                    player.prevY = player.y; 
+                    STATE.fallDistance = 0;
+                    
+                    STATE.combo++; STATE.comboMultiplier = Math.min(3.0, 1.0 + Math.floor(STATE.combo / 5) * 0.2); DOM.updateCombo();
+                    
+                    AudioSys.play('land'); HapticSys.trigger(10); ParticleSys.spawn(player.x, p.y, 4, '#2c3e50'); 
+                    if (p.type === 'FRAGILE' && p.timer === 0) p.timer = 0.01; 
+                    break; 
+                }
+            }
+        }
+    }
+}
+
+let lastRenderedScore = -1;
+const DOM = {
+    score: document.getElementById('hudScore'), combo: document.getElementById('hudCombo'), menuHigh: document.getElementById('menuHighScore'), goScore: document.getElementById('goScore'), goBest: document.getElementById('goBestScore'),
+    screens: { menu: document.getElementById('screen-menu'), gameover: document.getElementById('screen-gameover'), pause: document.getElementById('screen-pause'), hud: document.getElementById('hud') },
+    show(screenId) { for (let key in this.screens) this.screens[key].classList.add('hidden'); if (screenId) this.screens[screenId].classList.remove('hidden'); },
+    updateScore(force = false) { let current = Math.floor(STATE.score); if (current !== lastRenderedScore || force) { this.score.textContent = current; lastRenderedScore = current; } },
+    updateCombo() {
+        if (STATE.combo > 0) { this.combo.textContent = `x${STATE.comboMultiplier.toFixed(1)}`; this.combo.style.display = 'block'; } 
+        else { this.combo.style.display = 'none'; }
+    }
+};
+
+let animationFrameId = null;
+
+function startGame() {
+    AudioSys.init(); STATE.mode = 'PLAYING'; STATE.score = 0; STATE.time = 0; STATE.scrollSpeed = CONFIG.physics.baseScrollSpeed;
+    STATE.effectiveJumpVelocity = CONFIG.physics.jumpVelocity; STATE.effectiveGapY = CONFIG.physics.gapY;
+    STATE.combo = 0; STATE.comboMultiplier = 1; STATE.fallDistance = 0; DOM.updateCombo();
+    player.reset(); platforms = []; ParticleSys.reset();
+    STATE.lastPlatformX = cw / 2 - 50; platforms.push(new Platform(ch / 2 + 100, 'NORMAL', 100, STATE.lastPlatformX));
+    for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < ch + 1000; y += STATE.effectiveGapY) spawnPlatform(y);
+    DOM.show('hud'); DOM.updateScore(true);
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function pauseGame() { if (STATE.mode !== 'PLAYING') return; STATE.mode = 'PAUSED'; DOM.show('pause'); }
+function resumeGame() { if (STATE.mode !== 'PAUSED') return; AudioSys.init(); STATE.mode = 'PLAYING'; DOM.show('hud'); lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop); }
+
+function triggerGameOver(reason = 'FALL') {
+    STATE.mode = 'GAMEOVER'; 
+    AudioSys.play('death'); HapticSys.trigger([30, 50, 30]); 
+    if (reason === 'SPIKE') ScreenShake.trigger(8, 0.3); else ScreenShake.trigger(4, 0.2); 
+    ParticleSys.spawn(player.x, player.y, 15, CONFIG.colors.spikeStroke); 
+    STATE.score = Math.floor(STATE.score); 
+    if (STATE.score > STATE.bestScore) { STATE.bestScore = STATE.score; Storage.save(); }
+    DOM.goScore.textContent = STATE.score; DOM.goBest.textContent = STATE.bestScore; DOM.show('gameover');
+    ScreenShake.update(0.016); render(0.016);
+    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+}
+
+document.getElementById('btn-play').addEventListener('click', startGame);
+document.getElementById('btn-retry').addEventListener('click', startGame);
+document.getElementById('btn-resume').addEventListener('click', resumeGame);
+document.getElementById('btn-menu').addEventListener('click', () => { DOM.menuHigh.textContent = STATE.bestScore; DOM.show('menu'); });
+
+let lastTime = 0, frameCount = 0, lastFpsTime = 0, currentFps = 0;
+const debugPanel = document.getElementById('debug-panel');
+
+function updateLogic(dt) {
+    STATE.time += dt;
+    STATE.scrollSpeed = Math.min(CONFIG.physics.maxScrollSpeed, CONFIG.physics.baseScrollSpeed + (STATE.time * 5));
+    
+    // FİZİK HESAPLAMALARI: Hız (Speed Ratio 0.0 -> 1.0)
+    let speedRatio = (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) / (CONFIG.physics.maxScrollSpeed - CONFIG.physics.baseScrollSpeed);
+    
+    // 1. İSTEK UPDATE: Scroll hızlandıkça zıplama gücü orantılı olarak büyür (Çarpan: 1.2)
+    STATE.effectiveJumpVelocity = CONFIG.physics.jumpVelocity + (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) * 1.2;
+    
+    // 2. İSTEK UPDATE: Platform aralığı hızlandıkça çok az (Max %20) daralır
+    STATE.effectiveGapY = CONFIG.physics.gapY * (1 - speedRatio * 0.2);
+    
+    STATE.score += (STATE.scrollSpeed / 100) * dt * 10 * STATE.comboMultiplier; DOM.updateScore(); 
+    
+    player.update(dt); handleCollisions();
+    
+    if (player.vy > 0) {
+        STATE.fallDistance += (player.vy + STATE.scrollSpeed) * dt;
+        if (STATE.fallDistance > STATE.effectiveGapY * 1.5 && STATE.combo > 0) {
+            STATE.combo = 0; STATE.comboMultiplier = 1; DOM.updateCombo();
+        }
+    } else { STATE.fallDistance = 0; }
+    
+    ScreenShake.update(dt); 
+    
+    if (player.y - player.radius <= 20) { triggerGameOver('SPIKE'); return; } 
+    if (player.y - player.radius > ch) { triggerGameOver('FALL'); return; }
+    
+    let lowestY = 0;
+    for (let i = platforms.length - 1; i >= 0; i--) {
+        let p = platforms[i]; p.update(dt);
+        if (p.y > lowestY) lowestY = p.y;
+        if (p.y + p.h < -50 || !p.active) platforms.splice(i, 1);
+    }
+    // Yeni platform efektif aralığa göre spawn olur
+    if (lowestY < ch + STATE.effectiveGapY) spawnPlatform(lowestY + STATE.effectiveGapY);
+    ParticleSys.update(dt);
+}
+
+function drawBackground() {
+    let offset = (STATE.time * STATE.scrollSpeed * 0.2) % 40;
+    ctx.save();
+    ctx.translate(0, -offset);
+    if(bgPattern) ctx.fillStyle = bgPattern;
+    ctx.fillRect(0, 0, cw, ch + 40); 
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(211, 47, 47, 0.3)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(30, ch); ctx.moveTo(34, 0); ctx.lineTo(34, ch); ctx.stroke();
+}
+
+function render(dt) {
+    ctx.save();
+    ctx.translate(ScreenShake.offsetX, ScreenShake.offsetY);
+    
+    drawBackground();
+    renderPlatforms(ctx);
+    ParticleSys.render(ctx); player.render(ctx);
+    
+    ctx.fillStyle = 'rgba(211, 47, 47, 0.1)'; ctx.fillRect(0, 0, cw, 20);
+    ctx.strokeStyle = CONFIG.colors.spikeStroke; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 10);
+    for(let x=0; x<cw; x+=20) { ctx.lineTo(x+10, 20); ctx.lineTo(x+20, 10); } 
+    ctx.stroke();
+    
+    ctx.restore();
+    
+    if (DEBUG_MODE) {
+        frameCount++; if (performance.now() - lastFpsTime >= 1000) { currentFps = frameCount; frameCount = 0; lastFpsTime = performance.now(); }
+        debugPanel.style.display = 'block'; let actParts = ParticleSys.pool.filter(p => p.active).length;
+        debugPanel.innerHTML = `FPS: ${currentFps} <br>DT: ${(dt * 1000).toFixed(1)}ms <br>PLATS: ${platforms.length} <br>PARTS: ${actParts}/${CONFIG.performance.particleLimit} <br>SPEED: ${Math.floor(STATE.scrollSpeed)} <br>COMBO: ${STATE.combo}`;
+    } else { debugPanel.style.display = 'none'; }
+}
+
+function gameLoop(timestamp) {
+    if (STATE.mode !== 'PLAYING') return;
+    animationFrameId = requestAnimationFrame(gameLoop);
+    let dt = (timestamp - lastTime) / 1000; lastTime = timestamp;
+    if (isNaN(dt) || dt <= 0) dt = 0.016; if (dt > CONFIG.performance.maxDt) dt = CONFIG.performance.maxDt;
+    updateLogic(dt);
+    if (STATE.mode === 'PLAYING') render(dt);
+}
+
+window.onload = () => { Storage.load(); initCanvas(); ParticleSys.init(); Input.init(); DOM.menuHigh.textContent = STATE.bestScore; DOM.show('menu'); };
+</script>
+</body>
+</html>
