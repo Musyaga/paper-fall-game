@@ -117,7 +117,7 @@ const CONFIG = {
     physics: { gravity: 2400, jumpVelocity: 950, maxHorizontalSpeed: 800, baseScrollSpeed: 180, maxScrollSpeed: 700, gapY: 155 },
     performance: { maxDPR: 1.0, maxDt: 0.033, particleLimit: 40 },
     colors: { paper: '#fcf9f2', player: '#1976d2', normalFill: '#e8f5e9', normalStroke: '#388e3c', movingFill: '#e1f5fe', movingStroke: '#0288d1', fragileFill: '#efebe9', fragileStroke: '#795548', spikeFill: '#fce4ec', spikeStroke: '#b71c1c' },
-    saveVersion: 10
+    saveVersion: 11
 };
 
 const STATE = { 
@@ -207,27 +207,45 @@ const AudioSys = {
             let node = this.pool.find(p => p.releaseTime < now);
             if (!node) return; 
             
+            // ============================================================
+            // FIX-2: LAND AUDIO OSCILLATOR REFERENCE
+            // node.frequency hatası node.osc.frequency olarak düzeltildi.
+            // Böylece exception oluşmadan gain/start işlemleri tamamlanır.
+            // Ayrıca diğer sound case'leri aynı node-reference hatasına
+            // karşı kontrol edildi.
+            // ============================================================
             if (type === 'land') {
-                node.osc.type = 'triangle'; node.frequency.setValueAtTime(300, now); node.osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
-                node.gain.gain.setValueAtTime(0.1, now); node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                node.osc.type = 'triangle'; 
+                node.osc.frequency.setValueAtTime(300, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
+                node.gain.gain.setValueAtTime(0.1, now); 
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
                 node.releaseTime = now + 0.05;
             } else if (type === 'break') {
-                node.osc.type = 'sawtooth'; node.osc.frequency.setValueAtTime(100, now); node.osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                node.gain.gain.setValueAtTime(0.15, now); node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                node.osc.type = 'sawtooth'; 
+                node.osc.frequency.setValueAtTime(100, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                node.gain.gain.setValueAtTime(0.15, now); 
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
                 node.releaseTime = now + 0.1;
             } else if (type === 'death') {
-                node.osc.type = 'square'; node.osc.frequency.setValueAtTime(150, now); node.osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
-                node.gain.gain.setValueAtTime(0.2, now); node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                node.osc.type = 'square'; 
+                node.osc.frequency.setValueAtTime(150, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+                node.gain.gain.setValueAtTime(0.2, now); 
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
                 node.releaseTime = now + 0.3;
             }
-        } catch(e) {}
+        } catch(e) {
+            if (DEBUG_MODE) console.warn("Audio Error:", e);
+        }
     }
 };
 
 const Input = {
     keys: { left: false, right: false },
     pointerDown: false,
-    pointerX: 0,
+    pointerX: null,
     init() {
         window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true; });
         window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false; });
@@ -240,46 +258,52 @@ const Input = {
                 this.pointerX = e.clientX;
             } else {
                 this.pointerDown = false;
+                this.pointerX = null;
             }
         };
         window.addEventListener('pointerdown', handlePointer, {passive: false});
         window.addEventListener('pointermove', handlePointer, {passive: false});
         window.addEventListener('pointerup', handlePointer);
         window.addEventListener('pointercancel', handlePointer);
+        window.addEventListener('touchend', handlePointer);
+        window.addEventListener('touchcancel', handlePointer);
         document.addEventListener('visibilitychange', () => { if (document.hidden && STATE.mode === 'PLAYING') pauseGame(); });
     },
     getAxis() {
         let axis = 0;
         if (this.keys.left) axis = -1;
         if (this.keys.right) axis = 1;
-        
-        // Klasik Arcade Mantığı: Dokunulan yer ekranın solunda mı, sağında mı?
-        if (this.pointerDown) {
-            axis = this.pointerX < cw / 2 ? -1 : 1;
-        }
         return axis;
     }
 };
 
 const player = {
-    x: 0, y: 0, vx: 0, vy: 0, radius: 14, prevY: 0,
-    reset() { this.x = cw / 2; this.y = ch / 2 - 100; this.prevY = this.y; this.vx = 0; this.vy = 0; },
+    x: 0, y: 0, vx: 0, vy: 0, radius: 14, prevY: 0, keyboardVx: 0,
+    reset() { this.x = cw / 2; this.y = ch / 2 - 100; this.prevY = this.y; this.vx = 0; this.vy = 0; this.keyboardVx = 0; },
     update(dt) {
         this.prevY = this.y;
         
-        const axis = Input.getAxis(); 
-        let targetVx = axis * CONFIG.physics.maxHorizontalSpeed;
-        
-        if (axis !== 0) {
-            this.vx += (targetVx - this.vx) * 25 * dt; 
+        // ============================================================
+        // FIX-1: DIRECT TOUCH INPUT
+        // Mobil kontrol ekranın sol/sağ yarısına göre binary yön
+        // vermek yerine pointerX'i doğrudan player hedef X konumu
+        // olarak kullanır. vx artık hareketi sürmez; yalnızca
+        // görsel feedback için türetilir.
+        // ============================================================
+        if (Input.pointerDown && Input.pointerX !== null) {
+            let targetX = Math.max(this.radius, Math.min(cw - this.radius, Input.pointerX));
+            this.vx = (targetX - this.x) / dt; // Görsel türev
+            this.x = targetX;
+            this.keyboardVx = 0;
         } else {
-            this.vx -= this.vx * 20 * dt;
+            const axis = Input.getAxis(); 
+            let targetVx = axis * CONFIG.physics.maxHorizontalSpeed;
+            if (axis !== 0) this.keyboardVx += (targetVx - this.keyboardVx) * 25 * dt; 
+            else this.keyboardVx -= this.keyboardVx * 20 * dt;
+            this.x += this.keyboardVx * dt;
+            this.x = Math.max(this.radius, Math.min(cw - this.radius, this.x));
+            this.vx = this.keyboardVx;
         }
-        
-        this.x += this.vx * dt;
-        
-        if (this.x < this.radius) { this.x = this.radius; this.vx = 0; }
-        if (this.x > cw - this.radius) { this.x = cw - this.radius; this.vx = 0; }
         
         this.vy += CONFIG.physics.gravity * dt;
         this.y += (this.vy + STATE.scrollSpeed) * dt; 
@@ -305,6 +329,7 @@ class Platform {
         this.dir = Math.random() < 0.5 ? 1 : -1; 
         this.speed = Math.random() * 50 + 50;
         this.spikePoints = [];
+        this.prevY = this.y;
         if (this.type === 'SPIKE') {
             const sps = Math.max(2, Math.floor(this.w / 16));
             const step = this.w / sps;
@@ -315,6 +340,7 @@ class Platform {
         }
     }
     update(dt) {
+        this.prevY = this.y; // Swept collision için
         this.y -= STATE.scrollSpeed * dt;
         if (this.type === 'MOVING') {
             this.x += this.dir * this.speed * dt;
@@ -343,6 +369,12 @@ function renderPlatforms(ctx) {
         spTriF: new Path2D(), spTriS: new Path2D()
     };
 
+    // ============================================================
+    // FIX-4: FRAGILE PLATFORM RENDER / HITBOX SYNC
+    // Render-only shake collision geometry ile senkron olmadığı
+    // için kaldırıldı. Görsel kırılma feedback'i particle/crack
+    // efektleriyle sağlanır.
+    // ============================================================
     for (let i = 0; i < platforms.length; i++) {
         let p = platforms[i];
         if (!p.active) continue;
@@ -361,7 +393,7 @@ function renderPlatforms(ctx) {
             if (p.type === 'NORMAL') { fp = paths.nF; sp = paths.nS; dp = paths.nD; }
             else if (p.type === 'MOVING') { fp = paths.mF; sp = paths.mS; dp = paths.mD; }
             else if (p.type === 'FRAGILE') {
-                if (p.timer > 0) { fp = paths.fsF; sp = paths.fsS; dp = paths.fsD; px += Math.sin(STATE.time * 60) * 3; } 
+                if (p.timer > 0) { fp = paths.fsF; sp = paths.fsS; dp = paths.fsD; } 
                 else { fp = paths.fF; sp = paths.fS; dp = paths.fD; }
             }
             fp.rect(px, py, pw, p.h); sp.rect(px, py, pw, p.h);
@@ -476,11 +508,11 @@ function handleCollisions() {
                 
                 let prevBottom = player.prevY + player.radius;
                 let currBottom = player.y + player.radius;
+                
+                let prevHitY = (p.type === 'SPIKE') ? p.prevY - 12 : p.prevY;
                 let hitY = (p.type === 'SPIKE') ? p.y - 12 : p.y;
                 
-                if (prevBottom <= hitY && currBottom >= hitY) {
-                    
-                    let t = (hitY - prevBottom) / (currBottom - prevBottom);
+                if (prevBottom <= prevHitY + 5 && currBottom >= hitY - 5) {
                     
                     if (p.type === 'SPIKE') { triggerGameOver('SPIKE'); return; }
                     
@@ -562,7 +594,21 @@ function updateLogic(dt) {
     
     STATE.score += (STATE.scrollSpeed / 100) * dt * 10 * STATE.comboMultiplier; DOM.updateScore(); 
     
-    player.update(dt); handleCollisions();
+    // ============================================================
+    // FIX-3: PHYSICS / COLLISION UPDATE ORDER
+    // Platformlar collision check'ten önce current-frame
+    // konumlarına update edilir. Player ve platform aynı frame
+    // durumları üzerinden swept collision kontrolüne girer.
+    // ============================================================
+    let lowestY = 0;
+    for (let i = platforms.length - 1; i >= 0; i--) {
+        let p = platforms[i]; p.update(dt);
+        if (p.y > lowestY) lowestY = p.y;
+        if (p.y + p.h < -50 || !p.active) platforms.splice(i, 1);
+    }
+    
+    player.update(dt); 
+    handleCollisions();
     
     if (player.vy > 0) {
         STATE.fallDistance += (player.vy + STATE.scrollSpeed) * dt;
@@ -575,13 +621,6 @@ function updateLogic(dt) {
     
     if (player.y - player.radius <= 20) { triggerGameOver('SPIKE'); return; } 
     if (player.y - player.radius > ch) { triggerGameOver('FALL'); return; }
-    
-    let lowestY = 0;
-    for (let i = platforms.length - 1; i >= 0; i--) {
-        let p = platforms[i]; p.update(dt);
-        if (p.y > lowestY) lowestY = p.y;
-        if (p.y + p.h < -50 || !p.active) platforms.splice(i, 1);
-    }
     
     if (lowestY < ch + STATE.effectiveGapY) spawnPlatform(lowestY + STATE.effectiveGapY);
     ParticleSys.update(dt);
