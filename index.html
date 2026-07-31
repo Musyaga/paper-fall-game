@@ -114,14 +114,12 @@
 const DEBUG_MODE = false;
 
 const CONFIG = {
-    controls: { instantFollow: false, followSpeed: 24 },
     physics: { gravity: 2400, jumpVelocity: 950, maxHorizontalSpeed: 800, baseScrollSpeed: 180, maxScrollSpeed: 700, gapY: 155 },
     performance: { maxDPR: 1.0, maxDt: 0.033, particleLimit: 40 },
     colors: { paper: '#fcf9f2', player: '#1976d2', normalFill: '#e8f5e9', normalStroke: '#388e3c', movingFill: '#e1f5fe', movingStroke: '#0288d1', fragileFill: '#efebe9', fragileStroke: '#795548', spikeFill: '#fce4ec', spikeStroke: '#b71c1c' },
-    saveVersion: 8
+    saveVersion: 10
 };
 
-// YENİ: Zıplama gücü (effectiveJumpVelocity) ve platform aralığı (effectiveGapY) dinamik olarak state içinde tutulur.
 const STATE = { 
     mode: 'MENU', score: 0, bestScore: 0, time: 0, scrollSpeed: CONFIG.physics.baseScrollSpeed, lastPlatformX: 0, 
     combo: 0, comboMultiplier: 1, fallDistance: 0,
@@ -227,14 +225,22 @@ const AudioSys = {
 };
 
 const Input = {
-    keys: { left: false, right: false }, pointerX: null,
+    keys: { left: false, right: false },
+    pointerDown: false,
+    pointerX: 0,
     init() {
         window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true; });
         window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false; });
         const handlePointer = (e) => {
             if (e.target.tagName === 'BUTTON') return;
             if (e.type !== 'pointerup' && e.type !== 'pointercancel') e.preventDefault();
-            this.pointerX = (e.type === 'pointerdown' || e.type === 'pointermove') ? e.clientX : null;
+            
+            if (e.type === 'pointerdown' || e.type === 'pointermove') {
+                this.pointerDown = true;
+                this.pointerX = e.clientX;
+            } else {
+                this.pointerDown = false;
+            }
         };
         window.addEventListener('pointerdown', handlePointer, {passive: false});
         window.addEventListener('pointermove', handlePointer, {passive: false});
@@ -242,7 +248,17 @@ const Input = {
         window.addEventListener('pointercancel', handlePointer);
         document.addEventListener('visibilitychange', () => { if (document.hidden && STATE.mode === 'PLAYING') pauseGame(); });
     },
-    getAxis() { let axis = 0; if (this.keys.left) axis = -1; if (this.keys.right) axis = 1; return axis; }
+    getAxis() {
+        let axis = 0;
+        if (this.keys.left) axis = -1;
+        if (this.keys.right) axis = 1;
+        
+        // Klasik Arcade Mantığı: Dokunulan yer ekranın solunda mı, sağında mı?
+        if (this.pointerDown) {
+            axis = this.pointerX < cw / 2 ? -1 : 1;
+        }
+        return axis;
+    }
 };
 
 const player = {
@@ -250,22 +266,21 @@ const player = {
     reset() { this.x = cw / 2; this.y = ch / 2 - 100; this.prevY = this.y; this.vx = 0; this.vy = 0; },
     update(dt) {
         this.prevY = this.y;
-        if (Input.pointerX !== null) {
-            let targetX = Math.max(this.radius, Math.min(cw - this.radius, Input.pointerX));
-            if (CONFIG.controls.instantFollow) {
-                this.vx = (targetX - this.x) / dt; this.x = targetX;
-            } else {
-                let diff = targetX - this.x; this.x += diff * CONFIG.controls.followSpeed * dt; this.vx = diff * 15; 
-            }
+        
+        const axis = Input.getAxis(); 
+        let targetVx = axis * CONFIG.physics.maxHorizontalSpeed;
+        
+        if (axis !== 0) {
+            this.vx += (targetVx - this.vx) * 25 * dt; 
         } else {
-            const axis = Input.getAxis(); let targetVx = axis * CONFIG.physics.maxHorizontalSpeed;
-            if (axis !== 0) this.vx += (targetVx - this.vx) * 25 * dt; else this.vx -= this.vx * 20 * dt;
-            this.x += this.vx * dt;
-            if (this.x < this.radius) { this.x = this.radius; this.vx = 0; }
-            if (this.x > cw - this.radius) { this.x = cw - this.radius; this.vx = 0; }
+            this.vx -= this.vx * 20 * dt;
         }
         
-        // Zıplama gücü ne kadar artarsa artsın yerçekimi standart kalır.
+        this.x += this.vx * dt;
+        
+        if (this.x < this.radius) { this.x = this.radius; this.vx = 0; }
+        if (this.x > cw - this.radius) { this.x = cw - this.radius; this.vx = 0; }
+        
         this.vy += CONFIG.physics.gravity * dt;
         this.y += (this.vy + STATE.scrollSpeed) * dt; 
     },
@@ -422,8 +437,6 @@ const ParticleSys = {
 let platforms = [];
 
 function spawnPlatform(y) {
-    // 4. İSTEK UPDATE: Diken ihtimalini hız arttıkça yükseltmek yerine kademeli olarak düşürüyoruz.
-    // Başlangıçta %15, oyun hızlandıkça %8'e kadar geriler (max hıza ulaştığında).
     let speedRatio = (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) / (CONFIG.physics.maxScrollSpeed - CONFIG.physics.baseScrollSpeed);
     let spikeChance = 0.15 - 0.07 * speedRatio; 
     let spikeCap = 0.50 + spikeChance;
@@ -435,16 +448,12 @@ function spawnPlatform(y) {
     
     let w = Math.random() * 60 + 70;
     
-    // MATEMATİKSEL DOĞRULAMA (Gerçek Hava Süresi T hesaplaması)
     let a = 0.5 * CONFIG.physics.gravity;
     let b = 2 * STATE.scrollSpeed - STATE.effectiveJumpVelocity;
     let c = -STATE.effectiveGapY;
     
-    // 2. dereceden denklem ile hedefe varış süresi
     let T = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
     let trueReach = CONFIG.physics.maxHorizontalSpeed * T;
-    
-    // Spawner, gerçek menzilin sadece %80'ini (Güvenli Alan) kullanabilir.
     let maxReach = trueReach * 0.8; 
 
     let minX = Math.max(10, STATE.lastPlatformX - maxReach);
@@ -462,24 +471,31 @@ function handleCollisions() {
         for (let i = 0; i < platforms.length; i++) {
             let p = platforms[i];
             if (!p.active) continue;
+            
             if (player.x + player.radius > p.x && player.x - player.radius < p.x + p.w) {
+                
                 let prevBottom = player.prevY + player.radius;
                 let currBottom = player.y + player.radius;
                 let hitY = (p.type === 'SPIKE') ? p.y - 12 : p.y;
-                let allowance = 25; 
-                if (prevBottom <= hitY + allowance && currBottom >= hitY - 10) {
+                
+                if (prevBottom <= hitY && currBottom >= hitY) {
+                    
+                    let t = (hitY - prevBottom) / (currBottom - prevBottom);
+                    
                     if (p.type === 'SPIKE') { triggerGameOver('SPIKE'); return; }
                     
                     player.y = hitY - player.radius; 
-                    // 1. İSTEK UPDATE: Sabit zıplama gücü yerine dinamik zıplama gücü atanır
                     player.vy = -STATE.effectiveJumpVelocity; 
                     player.prevY = player.y; 
                     STATE.fallDistance = 0;
                     
-                    STATE.combo++; STATE.comboMultiplier = Math.min(3.0, 1.0 + Math.floor(STATE.combo / 5) * 0.2); DOM.updateCombo();
+                    STATE.combo++; 
+                    STATE.comboMultiplier = Math.min(3.0, 1.0 + Math.floor(STATE.combo / 5) * 0.2); 
+                    DOM.updateCombo();
                     
-                    AudioSys.play('land'); HapticSys.trigger(10); ParticleSys.spawn(player.x, p.y, 4, '#2c3e50'); 
+                    AudioSys.play('land'); HapticSys.trigger(10); ParticleSys.spawn(player.x, hitY, 4, '#2c3e50'); 
                     if (p.type === 'FRAGILE' && p.timer === 0) p.timer = 0.01; 
+                    
                     break; 
                 }
             }
@@ -540,13 +556,8 @@ function updateLogic(dt) {
     STATE.time += dt;
     STATE.scrollSpeed = Math.min(CONFIG.physics.maxScrollSpeed, CONFIG.physics.baseScrollSpeed + (STATE.time * 5));
     
-    // FİZİK HESAPLAMALARI: Hız (Speed Ratio 0.0 -> 1.0)
     let speedRatio = (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) / (CONFIG.physics.maxScrollSpeed - CONFIG.physics.baseScrollSpeed);
-    
-    // 1. İSTEK UPDATE: Scroll hızlandıkça zıplama gücü orantılı olarak büyür (Çarpan: 1.2)
     STATE.effectiveJumpVelocity = CONFIG.physics.jumpVelocity + (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) * 1.2;
-    
-    // 2. İSTEK UPDATE: Platform aralığı hızlandıkça çok az (Max %20) daralır
     STATE.effectiveGapY = CONFIG.physics.gapY * (1 - speedRatio * 0.2);
     
     STATE.score += (STATE.scrollSpeed / 100) * dt * 10 * STATE.comboMultiplier; DOM.updateScore(); 
@@ -571,7 +582,7 @@ function updateLogic(dt) {
         if (p.y > lowestY) lowestY = p.y;
         if (p.y + p.h < -50 || !p.active) platforms.splice(i, 1);
     }
-    // Yeni platform efektif aralığa göre spawn olur
+    
     if (lowestY < ch + STATE.effectiveGapY) spawnPlatform(lowestY + STATE.effectiveGapY);
     ParticleSys.update(dt);
 }
