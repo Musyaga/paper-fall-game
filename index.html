@@ -127,6 +127,10 @@
             <button class="btn" id="btn-skip-revive" style="font-size: 1.2rem; background: transparent; border: none; box-shadow: none; text-decoration: underline;">ATLA</button>
         </div>
 
+        <div id="screen-countdown" class="panel interactive hidden" style="background: transparent; border: none; box-shadow: none;">
+            <div id="countdown-text" style="font-size: 10rem; font-weight: 700; color: var(--ink-red); text-shadow: 6px 6px 0px rgba(0,0,0,0.1); transform: rotate(-2deg);">3</div>
+        </div>
+
         <div id="screen-gameover" class="panel interactive hidden">
             <h2>OYUN BİTTİ</h2>
             <div class="hud-score" id="goScore" style="margin-bottom: 25px; font-size: 4.5rem; transform: rotate(-2deg);">0</div>
@@ -172,7 +176,7 @@ const CONFIG = {
         maxComboMultiplier: 5,
         speedFreezeScore: 3500 
     },
-    performance: { maxDPR: 1.0, maxDt: 0.033, particleLimit: 40 },
+    performance: { maxDPR: 1.0, maxDt: 0.1, particleLimit: 40 },
     themes: [
         { 
             minScore: 0, 
@@ -221,7 +225,8 @@ const STATE = {
     effectiveGapY: CONFIG.physics.gapY,
     currentThemeIdx: 0, targetThemeIdx: 0, themeLerpT: 1.0, flashAlpha: 0,
     activeColors: { ...CONFIG.themes[0] },
-    reviveUsed: false, reviveTimer: 0, deathReason: '',
+    reviveUsed: false, reviveTimer: 0, deathReason: '', reviveSessionId: 0,
+    countdownTimer: 0,
     recentTypes: [],
     freezeSpeed: 0,
     rng: Math.random,
@@ -557,7 +562,7 @@ const MusicSys = {
         if (!this.ctx || !this.isPlaying) return;
         
         let targetDuck = (STATE.mode === 'GAMEOVER' || STATE.mode === 'REVIVE') ? 0.0 : 1.0;
-        this.duckLevel += (targetDuck - this.duckLevel) * 5 * dt;
+        this.duckLevel += (targetDuck - this.duckLevel) * 15 * dt;
         
         this.masterGain.gain.value = Storage.settings.muted ? 0 : this.duckLevel;
 
@@ -612,6 +617,7 @@ const Input = {
     init() {
         window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true; });
         window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false; });
+        
         const handlePointer = (e) => {
             let target = e.target;
             while (target && target !== document.body) {
@@ -660,12 +666,25 @@ const Input = {
 };
 
 const player = {
-    x: 0, y: 0, vx: 0, vy: 0, radius: 14, prevY: 0, keyboardVx: 0, invincible: 0,
-    reset() { this.x = cw / 2; this.y = ch / 2 - 100; this.prevY = this.y; this.vx = 0; this.vy = 0; this.keyboardVx = 0; this.invincible = 0; },
+    x: 0, y: 0, vx: 0, vy: 0, radius: 14, prevX: 0, prevY: 0, keyboardVx: 0, invincible: 0,
+    
+    reset() { 
+        this.x = cw / 2; this.y = ch / 2 - 100; 
+        this.prevX = this.x; this.prevY = this.y; 
+        this.vx = 0; this.vy = 0; this.keyboardVx = 0; this.invincible = 0;
+        Input.pointerDown = false; Input.pointerX = null;
+    },
+    
     update(dt) {
+        if (!isFinite(this.x)) this.x = cw / 2;
+        if (!isFinite(this.y)) this.y = ch / 2;
+        if (!isFinite(this.vx)) this.vx = 0;
+        if (!isFinite(this.vy)) this.vy = 0;
+
+        this.prevX = this.x;
         this.prevY = this.y;
         
-        if (Input.pointerDown && Input.pointerX !== null && !isNaN(Input.pointerX)) {
+        if (Input.pointerDown && Input.pointerX !== null && isFinite(Input.pointerX)) {
             let targetX = Math.max(this.radius, Math.min(cw - this.radius, Input.pointerX));
             this.vx = (targetX - this.x) / dt; 
             this.x = targetX;
@@ -683,6 +702,7 @@ const player = {
         this.vy += CONFIG.physics.gravity * dt;
         this.y += (this.vy + STATE.scrollSpeed) * dt; 
     },
+    
     render(ctx, dt, isGhost = false) {
         if (!isGhost && this.invincible > 0) {
             this.invincible -= dt;
@@ -723,6 +743,7 @@ class Platform {
         this.speed = STATE.rng() * 50 + 50;
         
         this.spikePoints = [];
+        this.prevX = this.x; 
         this.prevY = this.y;
         this.landed = false; 
         this.nearMissed = false; 
@@ -737,7 +758,9 @@ class Platform {
         }
     }
     update(dt) {
+        this.prevX = this.x; 
         this.prevY = this.y; 
+        
         this.y -= STATE.scrollSpeed * dt;
         if (this.type === 'MOVING') {
             this.x += this.dir * this.speed * dt;
@@ -934,7 +957,7 @@ function spawnPlatform(y) {
 
 function updateComboUI(reset = false) {
     if (reset) STATE.combo = 0;
-    STATE.comboMultiplier = Math.min(CONFIG.physics.maxComboMultiplier, 1.0 + Math.floor(STATE.combo / 5) * 0.2);
+    STATE.comboMultiplier = Math.min(CONFIG.physics.maxComboMultiplier, 1.0 + (STATE.combo * 0.1));
     
     if (STATE.combo > 0) {
         DOM.combo.textContent = `x${STATE.comboMultiplier.toFixed(1)}`;
@@ -947,69 +970,77 @@ function updateComboUI(reset = false) {
     }
 }
 
-function handleCollisions() {
+function handleSweptCollisions() {
     let relativeVy = player.vy + STATE.scrollSpeed;
-    if (relativeVy > 0) {
-        for (let i = 0; i < platforms.length; i++) {
-            let p = platforms[i];
-            if (!p.active) continue;
-            
-            if (player.x + player.radius > p.x && player.x - player.radius < p.x + p.w) {
-                
-                let prevBottom = player.prevY + player.radius;
-                let currBottom = player.y + player.radius;
-                
-                let prevHitY = (p.type === 'SPIKE') ? p.prevY - 12 : p.prevY;
-                let hitY = (p.type === 'SPIKE') ? p.y - 12 : p.y;
-                
-                if (prevBottom <= prevHitY + 5 && currBottom >= hitY - 5) {
-                    
-                    if (p.type === 'SPIKE') { 
-                        if (player.invincible <= 0) {
-                            triggerGameOver('SPIKE'); return; 
-                        }
-                    }
-                    
-                    player.y = hitY - player.radius; 
-                    player.vy = -STATE.effectiveJumpVelocity; 
-                    player.prevY = player.y; 
-                    STATE.fallDistance = 0;
-                    
-                    if (!p.landed && p.type !== 'SPIKE') {
-                        p.landed = true;
-                        let centerTarget = p.x + p.w / 2;
-                        let perfectZoneWidth = Math.max(20, Math.min(40, p.w * 0.30)); 
-                        let distanceToCenter = Math.abs(player.x - centerTarget);
-                        
-                        if (distanceToCenter <= perfectZoneWidth / 2) {
-                            STATE.score += 25;
-                            STATE.combo += 2;
-                            FloatingTextSys.add('PERFECT!', player.x, hitY - 30, '#ffeb3b');
-                            AudioSys.play('perfect');
-                            ParticleSys.spawn(player.x, hitY, 12, '#ffeb3b');
-                            ScreenShake.trigger(2, 0.1);
-                        } else {
-                            AudioSys.play('land');
-                            ParticleSys.spawn(player.x, hitY, 4, '#2c3e50');
-                        }
-                        updateComboUI();
-                    } else if(p.type !== 'SPIKE') {
-                        AudioSys.play('land');
-                    }
-                    
-                    if (p.type === 'FRAGILE' && p.timer === 0) p.timer = 0.01; 
-                    
-                    break; 
+    if (relativeVy <= 0) return; 
+
+    let hitPlatform = null;
+    let highestHitY = 999999;
+
+    let pbStart = player.prevY + player.radius;
+    let pbEnd = player.y + player.radius;
+
+    for (let i = 0; i < platforms.length; i++) {
+        let p = platforms[i];
+        if (!p.active) continue;
+
+        let ptStart = (p.type === 'SPIKE') ? p.prevY - 12 : p.prevY;
+        let ptEnd = (p.type === 'SPIKE') ? p.y - 12 : p.y;
+
+        if (pbStart <= ptStart + 15 && pbEnd >= ptEnd - 15) {
+            if (player.x + player.radius > p.x + 2 && player.x - player.radius < p.x + p.w - 2) {
+                if (ptEnd < highestHitY) {
+                    highestHitY = ptEnd;
+                    hitPlatform = p;
                 }
             }
         }
+    }
+
+    if (hitPlatform) {
+        if (hitPlatform.type === 'SPIKE' && player.invincible <= 0) {
+            triggerGameOver('SPIKE');
+            return;
+        }
+
+        let snapY = (hitPlatform.type === 'SPIKE') ? hitPlatform.y - 12 : hitPlatform.y;
+        player.y = snapY - player.radius;
+        player.vy = -STATE.effectiveJumpVelocity;
+        player.prevY = player.y;
+        STATE.fallDistance = 0;
+
+        if (!hitPlatform.landed && hitPlatform.type !== 'SPIKE') {
+            hitPlatform.landed = true;
+            let centerTarget = hitPlatform.x + hitPlatform.w / 2;
+            let perfectZoneWidth = Math.max(20, Math.min(40, hitPlatform.w * 0.30)); 
+            let distanceToCenter = Math.abs(player.x - centerTarget);
+            
+            if (distanceToCenter <= perfectZoneWidth / 2) {
+                let earned = Math.floor(25 * STATE.comboMultiplier);
+                STATE.score += earned;
+                STATE.combo += 1;
+                FloatingTextSys.add(`MÜKEMMEL! +${earned}`, player.x, snapY - 30, '#ffeb3b');
+                AudioSys.play('perfect');
+                ParticleSys.spawn(player.x, snapY, 12, '#ffeb3b');
+                ScreenShake.trigger(2, 0.1);
+            } else {
+                AudioSys.play('land');
+                ParticleSys.spawn(player.x, snapY, 4, '#2c3e50');
+            }
+            updateComboUI();
+        } else if(hitPlatform.type !== 'SPIKE') {
+            AudioSys.play('land');
+        }
+        
+        if (hitPlatform.type === 'FRAGILE' && hitPlatform.timer === 0) hitPlatform.timer = 0.01; 
     }
 }
 
 let lastRenderedScore = -1;
 const DOM = {
     score: document.getElementById('hudScore'), combo: document.getElementById('hudCombo'), ghostDiff: document.getElementById('hudDiff'), menuHigh: document.getElementById('menuHighScore'), goScore: document.getElementById('goScore'), goBest: document.getElementById('goBestScore'),
-    screens: { menu: document.getElementById('screen-menu'), gameover: document.getElementById('screen-gameover'), pause: document.getElementById('screen-pause'), hud: document.getElementById('hud'), revive: document.getElementById('screen-revive') },
+    screens: { menu: document.getElementById('screen-menu'), gameover: document.getElementById('screen-gameover'), pause: document.getElementById('screen-pause'), hud: document.getElementById('hud'), revive: document.getElementById('screen-revive'), countdown: document.getElementById('screen-countdown') },
+    countdownText: document.getElementById('countdown-text'),
     
     show(screenId) { 
         for (let key in this.screens) this.screens[key].classList.add('hidden'); 
@@ -1066,7 +1097,7 @@ function startGame(isGhost = false) {
     player.reset(); platforms = []; ParticleSys.reset(); FloatingTextSys.reset();
     
     STATE.lastPlatformX = cw / 2 - 50; platforms.push(new Platform(ch / 2 + 100, 'NORMAL', 100, STATE.lastPlatformX));
-    for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < ch + 1000; y += STATE.effectiveGapY) spawnPlatform(y);
+    for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < ch * 2; y += STATE.effectiveGapY) spawnPlatform(y);
     
     DOM.show('hud'); DOM.updateScore(true);
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -1088,6 +1119,10 @@ function showRealGameOver(reason) {
         Storage.ghostData = { seed: STATE.currentSeed, log: STATE.currentRunLog, score: STATE.score };
         Storage.save(); 
         Storage.saveGhost();
+    }
+    
+    if (MusicSys.masterGain) {
+        MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.15);
     }
     
     DOM.goScore.textContent = STATE.score; DOM.goBest.textContent = STATE.bestScore; DOM.show('gameover');
@@ -1153,32 +1188,45 @@ function initUI() {
     bindBtn('btn-menu', () => { DOM.menuHigh.textContent = STATE.bestScore; DOM.show('menu'); });
     
     bindBtn('btn-revive-ad', () => {
+        STATE.reviveSessionId = (STATE.reviveSessionId || 0) + 1;
+        let currentSession = STATE.reviveSessionId;
+        
         setTimeout(() => {
-            if (STATE.mode !== 'REVIVE') return;
+            if (STATE.mode !== 'REVIVE' || STATE.reviveSessionId !== currentSession) return;
             
             STATE.reviveUsed = true;
-            STATE.mode = 'PLAYING';
-            player.invincible = 1.5;
+            STATE.mode = 'COUNTDOWN';
+            STATE.countdownTimer = 3.0;
+            player.invincible = 4.5;
             
             platforms = [];
+            ParticleSys.reset();
+            FloatingTextSys.reset();
             
             player.x = cw / 2;
             player.y = ch / 2 - 50;
+            player.prevX = player.x;
             player.prevY = player.y;
-            player.vy = 0; 
+            player.vx = 0; 
+            player.vy = 0;
             player.keyboardVx = 0;
+            Input.pointerDown = false;
+            Input.pointerX = null;
             STATE.fallDistance = 0;
             
             updatePhysicsMetrics();
             
-            STATE.lastPlatformX = cw / 2 - 100;
-            platforms.push(new Platform(ch / 2 + 50, 'NORMAL', 200, STATE.lastPlatformX));
+            let reviveW = Math.min(260, cw - 40);
+            STATE.lastPlatformX = cw / 2 - reviveW / 2;
+            platforms.push(new Platform(ch / 2 + 50, 'NORMAL', reviveW, STATE.lastPlatformX));
             
-            for (let y = ch / 2 + 50 + STATE.effectiveGapY; y < ch + 1000; y += STATE.effectiveGapY) {
+            for (let y = ch / 2 + 50 + STATE.effectiveGapY; y < ch * 2; y += STATE.effectiveGapY) {
                 spawnPlatform(y);
             }
             
-            DOM.show('hud');
+            DOM.show('countdown');
+            DOM.countdownText.textContent = '3';
+            lastTime = performance.now();
         }, 300);
     });
     
@@ -1208,7 +1256,7 @@ function updateLogic(dt) {
     
     updatePhysicsMetrics();
     
-    STATE.score += (STATE.scrollSpeed / 100) * dt * 10 * STATE.comboMultiplier; DOM.updateScore(); 
+    STATE.score += (STATE.scrollSpeed / 100) * dt * 5 * STATE.comboMultiplier; DOM.updateScore(); 
     
     if (STATE.time - STATE.lastLogTime >= 0.1) {
         STATE.currentRunLog.push({ 
@@ -1303,9 +1351,10 @@ function updateLogic(dt) {
                 if (closest > player.radius && closest < player.radius * 2.5 && player.x > p.x - player.radius * 2.5 && player.x < p.x + p.w + player.radius * 2.5) {
                     if (player.x < p.x || player.x > p.x + p.w) {
                         p.nearMissed = true;
-                        STATE.score += 50;
-                        STATE.combo += 2;
-                        FloatingTextSys.add('NEAR MISS!', player.x, player.y - 40, '#00e676');
+                        let earned = Math.floor(50 * STATE.comboMultiplier);
+                        STATE.score += earned;
+                        STATE.combo += 1;
+                        FloatingTextSys.add(`TEĞET! +${earned}`, player.x, player.y - 40, '#00e676');
                         AudioSys.play('nearmiss');
                         updateComboUI();
                     }
@@ -1315,14 +1364,16 @@ function updateLogic(dt) {
     }
     
     player.update(dt); 
-    handleCollisions();
+    
+    handleSweptCollisions();
+    
     MusicSys.update(dt);
     
     if (player.vy > 0 && player.invincible <= 0) {
         STATE.fallDistance += (player.vy + STATE.scrollSpeed) * dt;
         if (STATE.fallDistance > STATE.effectiveGapY * 1.5 && STATE.combo > 0) {
             updateComboUI(true);
-            FloatingTextSys.add('COMBO LOST', player.x, player.y - 40, '#d32f2f');
+            FloatingTextSys.add('KOMBO GİTTİ', player.x, player.y - 40, '#d32f2f');
         }
     } else { STATE.fallDistance = 0; }
     
@@ -1421,11 +1472,36 @@ function render(dt) {
 function gameLoop(timestamp) {
     animationFrameId = requestAnimationFrame(gameLoop);
     let dt = (timestamp - lastTime) / 1000; lastTime = timestamp;
-    if (isNaN(dt) || dt <= 0) dt = 0.016; if (dt > CONFIG.performance.maxDt) dt = CONFIG.performance.maxDt;
+    if (isNaN(dt) || dt <= 0) dt = 0.016; 
+    if (dt > CONFIG.performance.maxDt) dt = CONFIG.performance.maxDt;
     
     if (STATE.mode === 'PLAYING') {
-        updateLogic(dt);
-        render(dt);
+        try {
+            updateLogic(dt);
+            render(dt);
+        } catch (err) {
+            console.error('[Paper Fall] Oyun döngüsünde beklenmeyen hata, güvenli şekilde Game Over ekranına dönülüyor:', err);
+            try {
+                STATE.reviveUsed = true;
+                showRealGameOver(STATE.deathReason || 'FALL');
+            } catch (err2) {
+                console.error('[Paper Fall] Yedek kurtarma da başarısız oldu:', err2);
+                STATE.mode = 'GAMEOVER';
+                DOM.show('gameover');
+            }
+        }
+    } else if (STATE.mode === 'COUNTDOWN') {
+        STATE.countdownTimer -= dt;
+        let currentSec = Math.ceil(STATE.countdownTimer);
+        DOM.countdownText.textContent = currentSec > 0 ? currentSec : 'BAŞLA!';
+        
+        MusicSys.update(dt);
+        render(0); 
+        
+        if (STATE.countdownTimer <= -0.5) {
+            STATE.mode = 'PLAYING';
+            DOM.show('hud');
+        }
     } else if (STATE.mode === 'REVIVE') {
         STATE.reviveTimer -= dt;
         document.getElementById('revive-counter').textContent = Math.ceil(STATE.reviveTimer);
@@ -1442,8 +1518,6 @@ function gameLoop(timestamp) {
     }
 }
 
-// Window.onload kaldırıldı. Betik en sonda çalıştığı için anında arayüzü başlatır.
-// Bu sayede font yüklenme gecikmesi sırasında tuşların tepkisiz kalması (oyuna başlamama) kökten çözülür.
 Storage.load(); 
 initCanvas(); 
 ParticleSys.init(); 
