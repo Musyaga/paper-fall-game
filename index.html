@@ -17,9 +17,16 @@
         
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: none; font-family: 'Kalam', cursive; }
         
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--paper); color: var(--text-dark); overscroll-behavior: none; }
+        body, html { 
+            width: 100%; height: 100%; overflow: hidden; 
+            background-color: var(--paper); color: var(--text-dark); overscroll-behavior: none; 
+            background-image: url('image_f52214.jpg');
+            background-size: cover;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+        }
         
-        #gameCanvas { display: block; width: 100%; height: 100%; object-fit: cover; }
+        #gameCanvas { display: block; width: 100%; height: 100%; object-fit: cover; background: transparent; }
         
         .layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; }
         .interactive { pointer-events: auto; }
@@ -51,7 +58,7 @@
         @keyframes comboPunch { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         
         .panel {
-            background: #ffffff; border: 4px solid var(--text-dark); 
+            background: rgba(255, 255, 255, 0.95); border: 4px solid var(--text-dark); 
             border-radius: 10px 25px 15px 30px; 
             padding: clamp(20px, 5vh, 40px) clamp(15px, 5vw, 30px); 
             margin: auto; width: 90%; max-width: 400px; min-width: 260px;
@@ -172,11 +179,11 @@ function mulberry32(seed) {
 const CONFIG = {
     physics: { 
         gravity: 2400, jumpVelocity: 950, maxHorizontalSpeed: 800, 
-        baseScrollSpeed: 180, maxScrollSpeed: 700, gapY: 155, 
+        baseScrollSpeed: 180, maxScrollSpeed: 550, gapY: 155, 
         maxComboMultiplier: 5,
         speedFreezeScore: 3500 
     },
-    performance: { maxDPR: 1.0, maxDt: 0.1, particleLimit: 40 },
+    performance: { maxDPR: 1.0, particleLimit: 40 },
     themes: [
         { 
             minScore: 0, 
@@ -185,7 +192,7 @@ const CONFIG = {
             normalFill: '#e8f5e9', normalStroke: '#388e3c', 
             movingFill: '#e1f5fe', movingStroke: '#0288d1', 
             fragileFill: '#efebe9', fragileStroke: '#795548', 
-            spikeFill: '#fce4ec', spikeStroke: '#b71c1c' 
+            spikeFill: '#95A5A6', spikeStroke: '#E74C3C' 
         },
         { 
             minScore: 2000, 
@@ -194,7 +201,7 @@ const CONFIG = {
             normalFill: '#D1F2EB', normalStroke: '#117A65', 
             movingFill: '#D4E6F1', movingStroke: '#1F618D', 
             fragileFill: '#F2D7D5', fragileStroke: '#922B21', 
-            spikeFill: '#FDEDEC', spikeStroke: '#C0392B' 
+            spikeFill: '#95A5A6', spikeStroke: '#E74C3C' 
         },
         { 
             minScore: 4500, 
@@ -203,7 +210,7 @@ const CONFIG = {
             normalFill: '#1E8449', normalStroke: '#5DCAA5', 
             movingFill: '#2874A6', movingStroke: '#5DADE2', 
             fragileFill: '#873600', fragileStroke: '#E59866', 
-            spikeFill: '#641E16', spikeStroke: '#FF5252' 
+            spikeFill: '#95A5A6', spikeStroke: '#E74C3C' 
         },
         { 
             minScore: 7500, 
@@ -212,7 +219,7 @@ const CONFIG = {
             normalFill: '#4A235A', normalStroke: '#BB8FCE', 
             movingFill: '#154360', movingStroke: '#85C1E9', 
             fragileFill: '#424949', fragileStroke: '#D5DBDB', 
-            spikeFill: '#1B2631', spikeStroke: '#FF1744' 
+            spikeFill: '#95A5A6', spikeStroke: '#E74C3C' 
         }
     ],
     saveVersion: 19
@@ -227,6 +234,10 @@ const STATE = {
     activeColors: { ...CONFIG.themes[0] },
     reviveUsed: false, reviveTimer: 0, deathReason: '', reviveSessionId: 0,
     countdownTimer: 0,
+    
+    // Ölüm Animasyonu Stateleri
+    deathTimer: 0, deathPhase: 0, deathParticles: [],
+    
     recentTypes: [],
     freezeSpeed: 0,
     rng: Math.random,
@@ -242,10 +253,13 @@ const STATE = {
 };
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false }); 
+const ctx = canvas.getContext('2d'); 
 let cw, ch, dpr;
 let bgPattern = null;
 let nextBgPattern = null;
+
+const FIXED_STEP = 1 / 120;
+let accumulator = 0;
 
 function hexToRgb(hex) {
     let h = hex.replace('#', '');
@@ -273,9 +287,7 @@ function lerpColor(c1, c2, t) {
 function createPatternForTheme(theme) {
     const patCanvas = document.createElement('canvas');
     patCanvas.width = 40; patCanvas.height = 40;
-    const pCtx = patCanvas.getContext('2d', { alpha: false });
-    pCtx.fillStyle = theme.paper; 
-    pCtx.fillRect(0, 0, 40, 40);
+    const pCtx = patCanvas.getContext('2d');
     pCtx.strokeStyle = theme.player; 
     pCtx.globalAlpha = 0.15;
     pCtx.lineWidth = 1;
@@ -360,7 +372,7 @@ const ScreenShake = {
 };
 
 const AudioSys = {
-    ctx: null, pool: [], poolSize: 12,
+    ctx: null, pool: [], poolSize: 15,
     init() { 
         try { 
             if (!this.ctx) { 
@@ -448,6 +460,24 @@ const AudioSys = {
                 node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
                 node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
                 node.releaseTime = now + 0.1;
+            } else if (type === 'crack') {
+                node.osc.type = 'square';
+                node.osc.frequency.setValueAtTime(200, now);
+                node.osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                node.gain.gain.setValueAtTime(0.3, now);
+                node.gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                node.releaseTime = now + 0.1;
+            } else if (type === 'shatter') {
+                node.osc.type = 'sawtooth';
+                node.osc.frequency.setValueAtTime(500, now);
+                node.osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+                node.gain.gain.setValueAtTime(0.4, now);
+                node.gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                node.releaseTime = now + 0.4;
+                
+                if (MusicSys.ctx) {
+                    MusicSys.playNoise(now, 0.4, MusicSys.percGain, 0.5);
+                }
             }
         } catch(e) {
             if (DEBUG_MODE) console.warn("Audio Error:", e);
@@ -561,7 +591,7 @@ const MusicSys = {
     update(dt) {
         if (!this.ctx || !this.isPlaying) return;
         
-        let targetDuck = (STATE.mode === 'GAMEOVER' || STATE.mode === 'REVIVE') ? 0.0 : 1.0;
+        let targetDuck = (STATE.mode === 'GAMEOVER' || STATE.mode === 'REVIVE' || STATE.mode === 'DEATH_ANIMATION') ? 0.0 : 1.0;
         this.duckLevel += (targetDuck - this.duckLevel) * 15 * dt;
         
         this.masterGain.gain.value = Storage.settings.muted ? 0 : this.duckLevel;
@@ -684,6 +714,10 @@ const player = {
         this.prevX = this.x;
         this.prevY = this.y;
         
+        if (this.invincible > 0) {
+            this.invincible -= dt;
+        }
+        
         if (Input.pointerDown && Input.pointerX !== null && isFinite(Input.pointerX)) {
             let targetX = Math.max(this.radius, Math.min(cw - this.radius, Input.pointerX));
             this.vx = (targetX - this.x) / dt; 
@@ -703,9 +737,8 @@ const player = {
         this.y += (this.vy + STATE.scrollSpeed) * dt; 
     },
     
-    render(ctx, dt, isGhost = false) {
+    render(ctx, isGhost = false, isCracked = false) {
         if (!isGhost && this.invincible > 0) {
-            this.invincible -= dt;
             if (Math.floor(this.invincible * 15) % 2 === 0) {
                 ctx.globalAlpha = 0.4;
             }
@@ -728,6 +761,18 @@ const player = {
             ctx.beginPath(); ctx.arc(px + 4 + eyeOff, py - 2, 2, 0, Math.PI*2); ctx.fill(); 
             ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 2; ctx.lineCap = 'round';
             ctx.beginPath(); ctx.arc(px + eyeOff, py + 3, 4, 0.2, Math.PI - 0.2); ctx.stroke(); 
+            
+            if (isCracked) {
+                ctx.strokeStyle = '#111';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(px, py - this.radius);
+                ctx.lineTo(px - 4, py - 5);
+                ctx.lineTo(px + 3, py);
+                ctx.lineTo(px - 3, py + 5);
+                ctx.lineTo(px + 2, py + this.radius);
+                ctx.stroke();
+            }
         }
         
         ctx.globalAlpha = 1.0;
@@ -831,8 +876,8 @@ function renderPlatforms(ctx) {
     ctx.setLineDash([5, 5]); ctx.strokeStyle = STATE.activeColors.fragileStroke; ctx.stroke(paths.fsS);
     ctx.lineWidth = 2; ctx.stroke(paths.fsD); ctx.lineWidth = 3; ctx.setLineDash([]);
 
-    ctx.fillStyle = STATE.activeColors.spikeFill; ctx.fill(paths.spBaseF); ctx.strokeStyle = '#2c3e50'; ctx.stroke(paths.spBaseS);
-    ctx.fillStyle = STATE.activeColors.spikeStroke; ctx.fill(paths.spTriF); ctx.strokeStyle = STATE.activeColors.spikeStroke; ctx.stroke(paths.spTriS);
+    ctx.fillStyle = '#95A5A6'; ctx.fill(paths.spBaseF); ctx.strokeStyle = '#2c3e50'; ctx.stroke(paths.spBaseS);
+    ctx.fillStyle = '#E74C3C'; ctx.fill(paths.spTriF); ctx.strokeStyle = '#E74C3C'; ctx.stroke(paths.spTriS);
 
     for (let i = 0; i < platforms.length; i++) {
         let p = platforms[i];
@@ -936,7 +981,7 @@ function spawnPlatform(y) {
     STATE.recentTypes.push(type);
     if (STATE.recentTypes.length > 4) STATE.recentTypes.shift();
     
-    let w = STATE.rng() * 60 + 70;
+    let w = Math.floor(STATE.rng() * 45 + 65); 
     
     let a = 0.5 * CONFIG.physics.gravity;
     let b = 2 * STATE.scrollSpeed - STATE.effectiveJumpVelocity;
@@ -977,20 +1022,20 @@ function handleSweptCollisions() {
     let hitPlatform = null;
     let highestHitY = 999999;
 
-    let pbStart = player.prevY + player.radius;
-    let pbEnd = player.y + player.radius;
+    let pBottom = player.y + player.radius;
+    let pPrevBottom = player.prevY + player.radius;
 
     for (let i = 0; i < platforms.length; i++) {
         let p = platforms[i];
         if (!p.active) continue;
 
-        let ptStart = (p.type === 'SPIKE') ? p.prevY - 12 : p.prevY;
-        let ptEnd = (p.type === 'SPIKE') ? p.y - 12 : p.y;
+        let platY = (p.type === 'SPIKE') ? p.y - 12 : p.y;
+        let platPrevY = (p.type === 'SPIKE') ? p.prevY - 12 : p.prevY;
 
-        if (pbStart <= ptStart + 15 && pbEnd >= ptEnd - 15) {
-            if (player.x + player.radius > p.x + 2 && player.x - player.radius < p.x + p.w - 2) {
-                if (ptEnd < highestHitY) {
-                    highestHitY = ptEnd;
+        if (pBottom >= platY && pPrevBottom <= platPrevY) {
+            if (player.x + player.radius > p.x && player.x - player.radius < p.x + p.w) {
+                if (platY < highestHitY) {
+                    highestHitY = platY;
                     hitPlatform = p;
                 }
             }
@@ -1018,7 +1063,7 @@ function handleSweptCollisions() {
             if (distanceToCenter <= perfectZoneWidth / 2) {
                 let earned = Math.floor(25 * STATE.comboMultiplier);
                 STATE.score += earned;
-                STATE.combo += 1;
+                STATE.combo += 2;
                 FloatingTextSys.add(`MÜKEMMEL! +${earned}`, player.x, snapY - 30, '#ffeb3b');
                 AudioSys.play('perfect');
                 ParticleSys.spawn(player.x, snapY, 12, '#ffeb3b');
@@ -1101,17 +1146,15 @@ function startGame(isGhost = false) {
     
     DOM.show('hud'); DOM.updateScore(true);
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    accumulator = 0;
     lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function pauseGame() { if (STATE.mode !== 'PLAYING') return; STATE.mode = 'PAUSED'; DOM.show('pause'); }
-function resumeGame() { if (STATE.mode !== 'PAUSED') return; AudioSys.init(); STATE.mode = 'PLAYING'; DOM.show('hud'); lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop); }
+function resumeGame() { if (STATE.mode !== 'PAUSED') return; AudioSys.init(); STATE.mode = 'PLAYING'; DOM.show('hud'); accumulator = 0; lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop); }
 
 function showRealGameOver(reason) {
     STATE.mode = 'GAMEOVER'; 
-    AudioSys.play('death'); HapticSys.trigger([30, 50, 30]); 
-    if (reason === 'SPIKE') ScreenShake.trigger(8, 0.3); else ScreenShake.trigger(4, 0.2); 
-    ParticleSys.spawn(player.x, player.y, 15, STATE.activeColors.spikeStroke); 
     STATE.score = Math.floor(STATE.score); 
     
     if (STATE.score > STATE.bestScore) { 
@@ -1121,25 +1164,27 @@ function showRealGameOver(reason) {
         Storage.saveGhost();
     }
     
-    if (MusicSys.masterGain) {
-        MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.15);
-    }
-    
     DOM.goScore.textContent = STATE.score; DOM.goBest.textContent = STATE.bestScore; DOM.show('gameover');
 }
 
 function triggerGameOver(reason = 'FALL') {
-    if (STATE.isGhostRace) {
-        STATE.reviveUsed = true;
+    STATE.mode = 'DEATH_ANIMATION';
+    STATE.deathTimer = 0;
+    STATE.deathReason = reason;
+    STATE.deathPhase = 0; 
+    STATE.deathParticles = [];
+
+    if (reason === 'FALL' && player.y - player.radius > ch) {
+        player.y = ch - player.radius;
     }
-    if (!STATE.reviveUsed) {
-        STATE.mode = 'REVIVE';
-        STATE.reviveTimer = 5.0;
-        STATE.deathReason = reason;
-        DOM.show('revive');
-    } else {
-        showRealGameOver(reason);
+
+    if (MusicSys.masterGain) {
+        MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.05);
     }
+    
+    AudioSys.play('crack');
+    HapticSys.trigger([50]);
+    ScreenShake.trigger(8, 0.2);
 }
 
 function updateMuteVisuals() {
@@ -1216,7 +1261,7 @@ function initUI() {
             
             updatePhysicsMetrics();
             
-            let reviveW = Math.max(120, cw * 0.4); 
+            let reviveW = Math.min(120, cw * 0.4); 
             STATE.lastPlatformX = cw / 2 - reviveW / 2;
             platforms.push(new Platform(ch / 2 + 50, 'NORMAL', reviveW, STATE.lastPlatformX));
             
@@ -1226,6 +1271,7 @@ function initUI() {
             
             DOM.show('countdown');
             DOM.countdownText.textContent = '3';
+            accumulator = 0;
             lastTime = performance.now();
         }, 300);
     });
@@ -1245,7 +1291,7 @@ function updateLogic(dt) {
     if (!STATE.freezeSpeed) {
         let targetSpeed = CONFIG.physics.maxScrollSpeed;
         let baseSpeed = CONFIG.physics.baseScrollSpeed;
-        STATE.scrollSpeed = targetSpeed - (targetSpeed - baseSpeed) * Math.exp(-STATE.time / 55.0);
+        STATE.scrollSpeed = targetSpeed - (targetSpeed - baseSpeed) * Math.exp(-STATE.time / 90.0);
         
         if (STATE.score >= CONFIG.physics.speedFreezeScore) {
             STATE.freezeSpeed = STATE.scrollSpeed;
@@ -1414,15 +1460,37 @@ function drawBackground() {
     }
     
     ctx.restore();
-    
-    ctx.strokeStyle = STATE.activeColors.spikeStroke; 
-    ctx.globalAlpha = 0.3;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(30, ch); ctx.moveTo(34, 0); ctx.lineTo(34, ch); ctx.stroke();
-    ctx.globalAlpha = 1.0;
 }
 
-function render(dt) {
+function drawTopSpikes() {
+    ctx.fillStyle = '#95A5A6';
+    ctx.fillRect(0, 0, cw, 12);
+    ctx.strokeStyle = '#2c3e50';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(cw, 12); ctx.stroke();
+
+    ctx.fillStyle = '#E74C3C';
+    ctx.strokeStyle = '#E74C3C';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for(let x=0; x<cw; x+=24) {
+        ctx.moveTo(x + 2, 12);
+        ctx.lineTo(x + 12, 26);
+        ctx.lineTo(x + 22, 12);
+    }
+    ctx.fill();
+    ctx.stroke();
+}
+
+function render() {
+    ctx.clearRect(0, 0, cw, ch);
+    
+    ctx.fillStyle = STATE.activeColors.paper;
+    ctx.globalAlpha = 0.65;
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.globalAlpha = 1.0;
+
     ctx.save();
     ctx.translate(ScreenShake.offsetX, ScreenShake.offsetY);
     
@@ -1431,25 +1499,37 @@ function render(dt) {
     ParticleSys.render(ctx); 
     FloatingTextSys.render(ctx); 
     
-    if (STATE.isGhostRace && STATE.ghostActive) {
+    if (STATE.isGhostRace && STATE.ghostActive && STATE.mode !== 'DEATH_ANIMATION') {
         ctx.save();
         ctx.globalAlpha = Math.max(0, STATE.ghostAlpha);
-        let ghostRef = { x: STATE.ghost.x, y: STATE.ghost.y, radius: player.radius, vx: 0 };
-        player.render.call(ghostRef, ctx, dt, true);
+        let ghostRef = { x: STATE.ghost.x, y: STATE.ghost.y, radius: player.radius, vx: 0, invincible: 0 };
+        player.render.call(ghostRef, ctx, true);
         ctx.restore();
     }
     
-    player.render(ctx, dt, false);
+    if (STATE.mode === 'DEATH_ANIMATION') {
+        if (STATE.deathPhase === 0) {
+            player.render(ctx, false, true); 
+        } else {
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = STATE.activeColors.player;
+            ctx.lineWidth = 2;
+            STATE.deathParticles.forEach(p => {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                ctx.beginPath();
+                ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+    } else if (STATE.mode !== 'GAMEOVER') {
+        player.render(ctx, false);
+    }
     
-    ctx.fillStyle = STATE.activeColors.spikeFill;
-    ctx.globalAlpha = 0.1;
-    ctx.fillRect(0, 0, cw, 20);
-    ctx.globalAlpha = 1.0;
-    
-    ctx.strokeStyle = STATE.activeColors.spikeStroke; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(0, 10);
-    for(let x=0; x<cw; x+=20) { ctx.lineTo(x+10, 20); ctx.lineTo(x+20, 10); } 
-    ctx.stroke();
+    drawTopSpikes();
     
     ctx.restore();
     
@@ -1465,20 +1545,25 @@ function render(dt) {
     if (DEBUG_MODE) {
         frameCount++; if (performance.now() - lastFpsTime >= 1000) { currentFps = frameCount; frameCount = 0; lastFpsTime = performance.now(); }
         debugPanel.style.display = 'block'; let actParts = ParticleSys.pool.filter(p => p.active).length;
-        debugPanel.innerHTML = `FPS: ${currentFps} <br>DT: ${(dt * 1000).toFixed(1)}ms <br>PLATS: ${platforms.length} <br>PARTS: ${actParts}/${CONFIG.performance.particleLimit} <br>SPEED: ${Math.floor(STATE.scrollSpeed)} <br>COMBO: ${STATE.combo}`;
+        debugPanel.innerHTML = `FPS: ${currentFps} <br>PLATS: ${platforms.length} <br>PARTS: ${actParts}/${CONFIG.performance.particleLimit} <br>SPEED: ${Math.floor(STATE.scrollSpeed)} <br>COMBO: ${STATE.combo}`;
     } else { debugPanel.style.display = 'none'; }
 }
 
 function gameLoop(timestamp) {
     animationFrameId = requestAnimationFrame(gameLoop);
     let dt = (timestamp - lastTime) / 1000; lastTime = timestamp;
-    if (isNaN(dt) || dt <= 0) dt = 0.016; 
-    if (dt > CONFIG.performance.maxDt) dt = CONFIG.performance.maxDt;
+    
+    if (isNaN(dt) || dt <= 0) dt = FIXED_STEP; 
+    if (dt > 0.1) dt = 0.1; 
     
     if (STATE.mode === 'PLAYING') {
         try {
-            updateLogic(dt);
-            render(dt);
+            accumulator += dt;
+            while (accumulator >= FIXED_STEP) {
+                updateLogic(FIXED_STEP);
+                accumulator -= FIXED_STEP;
+            }
+            render();
         } catch (err) {
             console.error('[Paper Fall] Oyun döngüsünde beklenmeyen hata, güvenli şekilde Game Over ekranına dönülüyor:', err);
             try {
@@ -1490,23 +1575,66 @@ function gameLoop(timestamp) {
                 DOM.show('gameover');
             }
         }
+    } else if (STATE.mode === 'DEATH_ANIMATION') {
+        STATE.deathTimer += dt;
+        
+        if (STATE.deathTimer >= 0.5 && STATE.deathPhase === 0) {
+            STATE.deathPhase = 1;
+            AudioSys.play('shatter');
+            HapticSys.trigger([30, 50, 30]);
+            ScreenShake.trigger(12, 0.3);
+            for(let i=0; i<30; i++) {
+                STATE.deathParticles.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: (Math.random() - 0.5) * 600,
+                    vy: (Math.random() - 0.5) * 600 - 200,
+                    r: Math.random() * 4 + 2,
+                    rot: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 10
+                });
+            }
+        }
+        
+        if (STATE.deathPhase === 1) {
+            STATE.deathParticles.forEach(p => {
+                p.vy += CONFIG.physics.gravity * dt;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.rot += p.rotSpeed * dt;
+            });
+        }
+        
+        if (STATE.deathTimer >= 2.0) {
+            if (STATE.isGhostRace) STATE.reviveUsed = true;
+
+            if (!STATE.reviveUsed) {
+                STATE.mode = 'REVIVE';
+                STATE.reviveTimer = 5.0;
+                DOM.show('revive');
+            } else {
+                showRealGameOver(STATE.deathReason);
+            }
+        }
+        render();
     } else if (STATE.mode === 'COUNTDOWN') {
         STATE.countdownTimer -= dt;
         let currentSec = Math.ceil(STATE.countdownTimer);
         DOM.countdownText.textContent = currentSec > 0 ? currentSec : 'BAŞLA!';
         
         MusicSys.update(dt);
-        render(0); 
+        render(); 
         
         if (STATE.countdownTimer <= -0.5) {
             STATE.mode = 'PLAYING';
+            accumulator = 0;
             DOM.show('hud');
         }
     } else if (STATE.mode === 'REVIVE') {
         STATE.reviveTimer -= dt;
         document.getElementById('revive-counter').textContent = Math.ceil(STATE.reviveTimer);
         MusicSys.update(dt);
-        render(0); 
+        render(); 
         if (STATE.reviveTimer <= 0) {
             STATE.reviveUsed = true;
             showRealGameOver(STATE.deathReason);
@@ -1514,7 +1642,7 @@ function gameLoop(timestamp) {
     } else if (STATE.mode === 'GAMEOVER') {
         ScreenShake.update(dt);
         MusicSys.update(dt);
-        render(0);
+        render();
     }
 }
 
