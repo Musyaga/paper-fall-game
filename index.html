@@ -32,7 +32,6 @@
         .interactive { pointer-events: auto; }
         .hidden { display: none !important; }
         
-        /* PHASE-0: HUD Konumu Güncellendi */
         #hud { position: absolute; top: 35px; left: 0; width: 100%; padding: clamp(10px, 3vw, 20px); display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
         .score-container { display: flex; align-items: flex-end; }
         
@@ -93,7 +92,6 @@
         
         #debug-panel { position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); border: 2px solid var(--ink-red); color: var(--text-dark); padding: 10px; font-family: monospace; font-size: 12px; z-index: 100; pointer-events: none; border-radius: 5px; display: none; font-weight: bold; }
         
-        /* PHASE-2: Tutorial Hint CSS */
         @keyframes pulseHint {
             0% { transform: scale(1); opacity: 0.8; }
             50% { transform: scale(1.1); opacity: 1; }
@@ -138,8 +136,7 @@
             <div id="ghost-msg" style="color: var(--ink-red); font-size: 1rem; margin-top: 10px; font-weight: bold; display: none;">Henüz bir hayalet yok — önce normal modda oyna ve bir skor yap!</div>
         </div>
         
-        <!-- PHASE-2: Tutorial Ekranı Eklentisi -->
-        <div id="screen-tutorial" class="panel interactive hidden" style="background: transparent; border: none; box-shadow: none; padding: 0; z-index: 20;">
+        <div id="screen-tutorial" class="hidden" style="position: absolute; bottom: 15%; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; pointer-events: none;">
             <div class="tutorial-hint" style="display: flex; flex-direction: column; align-items: center;">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M8 8l-4 4 4 4"></path>
@@ -164,7 +161,6 @@
 
         <div id="screen-gameover" class="panel interactive hidden">
             <h2>OYUN BİTTİ</h2>
-            <!-- PHASE-3: Skor renginin daima siyah (#111) olması sağlandı -->
             <div id="goScore" style="margin-bottom: 25px; font-size: clamp(3.5rem, 15vw, 4.5rem); transform: rotate(-2deg); font-weight: 700; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); color: #111;">0</div>
             
             <div style="width: 100%; max-width: 300px; margin-bottom: 20px;">
@@ -593,6 +589,7 @@ const MusicSys = {
 
             if (step === 0 || step === 4) {
                 let bass = [[45, 52], [41, 48], [43, 50], [40, 47]][bar][step === 0 ? 0 : 1];
+                let f = 440 * Math.pow(2, (bass + shift - 69)/12);
                 this.playTone(f, t, secPer8th * 1.5, 'triangle', this.bassGain, 0.3);
             }
 
@@ -671,6 +668,8 @@ const Input = {
         window.addEventListener('keydown', (e) => { 
             if (STATE.mode === 'TUTORIAL') {
                 STATE.mode = 'PLAYING';
+                STATE.time = 0;
+                STATE.lastLogTime = 0;
                 DOM.show('hud');
                 accumulator = 0;
             }
@@ -696,6 +695,8 @@ const Input = {
             if (e.type === 'pointerdown' || e.type === 'pointermove' || e.type === 'touchstart' || e.type === 'touchmove' || e.type === 'mousedown' || e.type === 'mousemove') {
                 if (STATE.mode === 'TUTORIAL') {
                     STATE.mode = 'PLAYING';
+                    STATE.time = 0;
+                    STATE.lastLogTime = 0;
                     DOM.show('hud');
                     accumulator = 0;
                 }
@@ -719,8 +720,8 @@ const Input = {
         
         window.addEventListener('pointerdown', handlePointer, {passive: false});
         window.addEventListener('pointermove', handlePointer, {passive: false});
-        window.addEventListener('pointerup', handlePointer);
-        window.addEventListener('pointercancel', handlePointer);
+        window.addEventListener('pointerup', handlePointer, {passive: false});
+        window.addEventListener('pointercancel', handlePointer, {passive: false});
         window.addEventListener('touchend', handlePointer);
         window.addEventListener('touchcancel', handlePointer);
         
@@ -1009,7 +1010,6 @@ function spawnPlatform(y) {
     
     if (!STATE.recentTypes) STATE.recentTypes = [];
     
-    // PHASE-4: Asla iki diken (SPIKE) arka arkaya gelmesin
     if (type === 'SPIKE' && STATE.recentTypes.length > 0 && STATE.recentTypes[STATE.recentTypes.length - 1] === 'SPIKE') {
         let altTypes = ['NORMAL', 'MOVING', 'FRAGILE'];
         type = altTypes[Math.floor(STATE.rng() * altTypes.length)];
@@ -1196,20 +1196,19 @@ function startGame(isGhost = false) {
     
     STATE.lastPlatformX = cw / 2 - 50; platforms.push(new Platform(ch / 2 + 100, 'NORMAL', 100, STATE.lastPlatformX));
     
-    // PHASE-1: Başlangıç toplu platform üretimi minimuma çekildi (ch * 1.5 kadar)
     let targetY = ch + STATE.effectiveGapY * 1.5;
     for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
         spawnPlatform(y);
     }
     
-    // PHASE-2: Tutorial Moduna Geçiş
     STATE.mode = 'TUTORIAL';
     DOM.show(['hud', 'tutorial']); 
     DOM.updateScore(true);
     
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     accumulator = 0;
-    lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop);
+    lastTime = performance.now(); 
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function pauseGame() { if (STATE.mode !== 'PLAYING') return; STATE.mode = 'PAUSED'; DOM.show('pause'); }
@@ -1319,7 +1318,7 @@ function initUI() {
             FloatingTextSys.reset();
             
             player.x = cw / 2;
-            player.y = ch / 2 - 50;
+            player.y = ch * 0.65;
             player.prevX = player.x;
             player.prevY = player.y;
             player.vx = 0; 
@@ -1333,11 +1332,10 @@ function initUI() {
             
             let reviveW = Math.min(120, cw * 0.4); 
             STATE.lastPlatformX = cw / 2 - reviveW / 2;
-            platforms.push(new Platform(ch / 2 + 50, 'NORMAL', reviveW, STATE.lastPlatformX));
+            platforms.push(new Platform(ch * 0.65 + 80, 'NORMAL', reviveW, STATE.lastPlatformX));
             
-            // PHASE-1: Revive toplu platform üretimi minimuma çekildi
             let targetY = ch + STATE.effectiveGapY * 1.5;
-            for (let y = ch / 2 + 50 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
+            for (let y = ch * 0.65 + 80 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
                 spawnPlatform(y);
             }
             
@@ -1509,11 +1507,7 @@ function updateLogic(dt) {
         }
     }
     
-    // PHASE-1: Platformların dikey üretimi while döngüsü ile garantilendi ve daha erken spawn ediliyor
-    while (lowestY < ch + STATE.effectiveGapY * 1.5) {
-        lowestY += STATE.effectiveGapY;
-        spawnPlatform(lowestY);
-    }
+    if (lowestY < ch + STATE.effectiveGapY) spawnPlatform(lowestY + STATE.effectiveGapY);
     ParticleSys.update(dt);
 }
 
@@ -1632,11 +1626,10 @@ function gameLoop(timestamp) {
     if (isNaN(dt) || dt <= 0) dt = FIXED_STEP; 
     if (dt > 0.1) dt = 0.1; 
     
-    // PHASE-2: Tutorial Nefes Alma Animasyonu Döngüsü
     if (STATE.mode === 'TUTORIAL') {
         STATE.time += dt;
         player.y = (ch / 2 - 100) + Math.sin(STATE.time * 4) * 8;
-        player.x = cw / 2; 
+        player.x = cw / 2;
         render();
     } else if (STATE.mode === 'PLAYING') {
         try {
