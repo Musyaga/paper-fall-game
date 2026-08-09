@@ -32,7 +32,8 @@
         .interactive { pointer-events: auto; }
         .hidden { display: none !important; }
         
-        #hud { position: absolute; top: 0; left: 0; width: 100%; padding: clamp(10px, 3vw, 20px); display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
+        /* PHASE-0: HUD Konumu Güncellendi */
+        #hud { position: absolute; top: 35px; left: 0; width: 100%; padding: clamp(10px, 3vw, 20px); display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
         .score-container { display: flex; align-items: flex-end; }
         
         .hud-score { 
@@ -91,6 +92,17 @@
         .stat-label { color: #555; }
         
         #debug-panel { position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); border: 2px solid var(--ink-red); color: var(--text-dark); padding: 10px; font-family: monospace; font-size: 12px; z-index: 100; pointer-events: none; border-radius: 5px; display: none; font-weight: bold; }
+        
+        /* PHASE-2: Tutorial Hint CSS */
+        @keyframes pulseHint {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        .tutorial-hint {
+            animation: pulseHint 1.5s infinite ease-in-out;
+            color: var(--ink-red);
+        }
     </style>
 </head>
 <body>
@@ -126,6 +138,18 @@
             <div id="ghost-msg" style="color: var(--ink-red); font-size: 1rem; margin-top: 10px; font-weight: bold; display: none;">Henüz bir hayalet yok — önce normal modda oyna ve bir skor yap!</div>
         </div>
         
+        <!-- PHASE-2: Tutorial Ekranı Eklentisi -->
+        <div id="screen-tutorial" class="panel interactive hidden" style="background: transparent; border: none; box-shadow: none; padding: 0; z-index: 20;">
+            <div class="tutorial-hint" style="display: flex; flex-direction: column; align-items: center;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 8l-4 4 4 4"></path>
+                    <path d="M16 8l4 4-4 4"></path>
+                    <path d="M4 12h16"></path>
+                </svg>
+                <div style="font-size: clamp(2rem, 10vw, 3rem); font-weight: 700; font-family: 'Kalam', cursive; margin-top: 10px; text-shadow: 2px 2px 0px rgba(0,0,0,0.1);">SÜRÜKLE</div>
+            </div>
+        </div>
+
         <div id="screen-revive" class="panel interactive hidden">
             <h2>HAYATA DÖN</h2>
             <p>Reklam izle ve devam et</p>
@@ -140,7 +164,8 @@
 
         <div id="screen-gameover" class="panel interactive hidden">
             <h2>OYUN BİTTİ</h2>
-            <div class="hud-score" id="goScore" style="margin-bottom: 25px; font-size: clamp(3.5rem, 15vw, 4.5rem); transform: rotate(-2deg);">0</div>
+            <!-- PHASE-3: Skor renginin daima siyah (#111) olması sağlandı -->
+            <div id="goScore" style="margin-bottom: 25px; font-size: clamp(3.5rem, 15vw, 4.5rem); transform: rotate(-2deg); font-weight: 700; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); color: #111;">0</div>
             
             <div style="width: 100%; max-width: 300px; margin-bottom: 20px;">
                 <div class="stat-box">
@@ -235,7 +260,6 @@ const STATE = {
     reviveUsed: false, reviveTimer: 0, deathReason: '', reviveSessionId: 0,
     countdownTimer: 0,
     
-    // Ölüm Animasyonu Stateleri
     deathTimer: 0, deathPhase: 0, deathParticles: [],
     
     recentTypes: [],
@@ -379,11 +403,6 @@ const AudioSys = {
                 const AC = window.AudioContext || window.webkitAudioContext; 
                 if (AC) {
                     this.ctx = new AC(); 
-                    for(let i=0; i<this.poolSize; i++) {
-                        const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
-                        gain.gain.value = 0; osc.connect(gain); gain.connect(this.ctx.destination);
-                        osc.start(); this.pool.push({ osc, gain, releaseTime: 0 });
-                    }
                 }
             } 
             if (this.ctx && this.ctx.state === 'suspended') {
@@ -403,82 +422,86 @@ const AudioSys = {
                 let times = [now, now + 0.1, now + 0.2];
                 
                 for(let i=0; i<3; i++) {
-                    let node = this.pool.find(p => p.releaseTime <= times[i] + 0.01);
-                    if(node) {
-                        node.osc.type = 'triangle';
-                        node.osc.frequency.cancelScheduledValues(times[i]);
-                        node.osc.frequency.setValueAtTime(freqs[i], times[i]);
-                        
-                        node.gain.gain.cancelScheduledValues(times[i]);
-                        node.gain.gain.setValueAtTime(0, times[i]);
-                        node.gain.gain.linearRampToValueAtTime(0.25, times[i] + 0.005);
-                        node.gain.gain.setValueAtTime(0.25, times[i] + durs[i] - 0.02);
-                        node.gain.gain.linearRampToValueAtTime(0, times[i] + durs[i]);
-                        
-                        node.releaseTime = times[i] + durs[i];
-                    }
+                    let osc = this.ctx.createOscillator();
+                    let gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc.frequency.setValueAtTime(freqs[i], times[i]);
+                    gain.gain.setValueAtTime(0, times[i]);
+                    gain.gain.linearRampToValueAtTime(0.25, times[i] + 0.005);
+                    gain.gain.setValueAtTime(0.25, times[i] + durs[i] - 0.02);
+                    gain.gain.linearRampToValueAtTime(0, times[i] + durs[i]);
+                    
+                    osc.start(times[i]);
+                    osc.stop(times[i] + durs[i]);
                 }
                 return;
             }
 
-            let node = this.pool.find(p => p.releaseTime < now);
-            if (!node) return; 
+            let osc = this.ctx.createOscillator();
+            let gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
             
-            node.osc.frequency.cancelScheduledValues(now);
-            node.gain.gain.cancelScheduledValues(now);
-            node.gain.gain.setValueAtTime(0, now);
+            gain.gain.setValueAtTime(0, now);
+            let releaseTime = now;
             
             if (type === 'land') {
-                node.osc.type = 'triangle'; 
-                node.osc.frequency.setValueAtTime(300, now); 
-                node.osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
-                node.gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
-                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
-                node.gain.gain.linearRampToValueAtTime(0, now + 0.05);
-                node.releaseTime = now + 0.05;
+                osc.type = 'triangle'; 
+                osc.frequency.setValueAtTime(300, now); 
+                osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
+                gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+                gain.gain.linearRampToValueAtTime(0, now + 0.05);
+                releaseTime = now + 0.05;
             } else if (type === 'break') {
-                node.osc.type = 'sawtooth'; 
-                node.osc.frequency.setValueAtTime(100, now); 
-                node.osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                node.gain.gain.linearRampToValueAtTime(0.1, now + 0.005);
-                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-                node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                node.releaseTime = now + 0.1;
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(100, now); 
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0.1, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                releaseTime = now + 0.1;
             } else if (type === 'perfect') {
-                node.osc.type = 'sine'; 
-                node.osc.frequency.setValueAtTime(400, now); 
-                node.osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-                node.gain.gain.linearRampToValueAtTime(0.12, now + 0.005);
-                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-                node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                node.releaseTime = now + 0.1;
+                osc.type = 'sine'; 
+                osc.frequency.setValueAtTime(400, now); 
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0.12, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                releaseTime = now + 0.1;
             } else if (type === 'nearmiss') {
-                node.osc.type = 'sawtooth'; 
-                node.osc.frequency.setValueAtTime(800, now); 
-                node.osc.frequency.exponentialRampToValueAtTime(2000, now + 0.1);
-                node.gain.gain.linearRampToValueAtTime(0.06, now + 0.005);
-                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-                node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                node.releaseTime = now + 0.1;
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(800, now); 
+                osc.frequency.exponentialRampToValueAtTime(2000, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0.06, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                releaseTime = now + 0.1;
             } else if (type === 'crack') {
-                node.osc.type = 'square';
-                node.osc.frequency.setValueAtTime(200, now);
-                node.osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-                node.gain.gain.setValueAtTime(0.3, now);
-                node.gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                node.releaseTime = now + 0.1;
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                releaseTime = now + 0.1;
             } else if (type === 'shatter') {
-                node.osc.type = 'sawtooth';
-                node.osc.frequency.setValueAtTime(500, now);
-                node.osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
-                node.gain.gain.setValueAtTime(0.4, now);
-                node.gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                node.releaseTime = now + 0.4;
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(500, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                releaseTime = now + 0.4;
                 
                 if (MusicSys.ctx) {
                     MusicSys.playNoise(now, 0.4, MusicSys.percGain, 0.5);
                 }
             }
+            
+            osc.start(now);
+            osc.stop(releaseTime);
         } catch(e) {
             if (DEBUG_MODE) console.warn("Audio Error:", e);
         }
@@ -570,7 +593,6 @@ const MusicSys = {
 
             if (step === 0 || step === 4) {
                 let bass = [[45, 52], [41, 48], [43, 50], [40, 47]][bar][step === 0 ? 0 : 1];
-                let f = 440 * Math.pow(2, (bass + shift - 69)/12);
                 this.playTone(f, t, secPer8th * 1.5, 'triangle', this.bassGain, 0.3);
             }
 
@@ -594,12 +616,13 @@ const MusicSys = {
         let targetDuck = (STATE.mode === 'GAMEOVER' || STATE.mode === 'REVIVE' || STATE.mode === 'DEATH_ANIMATION') ? 0.0 : 1.0;
         this.duckLevel += (targetDuck - this.duckLevel) * 15 * dt;
         
-        this.masterGain.gain.value = Storage.settings.muted ? 0 : this.duckLevel;
+        let now = this.ctx.currentTime;
+        this.masterGain.gain.setTargetAtTime(Storage.settings.muted ? 0 : this.duckLevel, now, 0.05);
 
         let targetPad = (STATE.score >= 300) ? 1.0 : 0.0;
         let targetPerc = (STATE.score >= 700) ? 0.3 : 0.0;
-        this.padGain.gain.value += (targetPad - this.padGain.gain.value) * 2 * dt;
-        this.percGain.gain.value += (targetPerc - this.percGain.gain.value) * 2 * dt;
+        this.padGain.gain.setTargetAtTime(targetPad, now, 0.1);
+        this.percGain.gain.setTargetAtTime(targetPerc, now, 0.1);
 
         this.schedule();
     }
@@ -645,8 +668,19 @@ const Input = {
     pointerDown: false,
     pointerX: null,
     init() {
-        window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true; });
-        window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false; if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false; });
+        window.addEventListener('keydown', (e) => { 
+            if (STATE.mode === 'TUTORIAL') {
+                STATE.mode = 'PLAYING';
+                DOM.show('hud');
+                accumulator = 0;
+            }
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = true; 
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = true; 
+        });
+        window.addEventListener('keyup', (e) => { 
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.keys.left = false; 
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') this.keys.right = false; 
+        });
         
         const handlePointer = (e) => {
             let target = e.target;
@@ -660,6 +694,11 @@ const Input = {
             }
 
             if (e.type === 'pointerdown' || e.type === 'pointermove' || e.type === 'touchstart' || e.type === 'touchmove' || e.type === 'mousedown' || e.type === 'mousemove') {
+                if (STATE.mode === 'TUTORIAL') {
+                    STATE.mode = 'PLAYING';
+                    DOM.show('hud');
+                    accumulator = 0;
+                }
                 this.pointerDown = true;
                 if (e.touches && e.touches.length > 0) {
                     this.pointerX = e.touches[0].clientX;
@@ -960,7 +999,7 @@ let platforms = [];
 
 function spawnPlatform(y) {
     let speedRatio = (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) / (CONFIG.physics.maxScrollSpeed - CONFIG.physics.baseScrollSpeed);
-    let spikeChance = 0.15 - 0.07 * speedRatio; 
+    let spikeChance = 0.08 - 0.02 * speedRatio; 
     let spikeCap = 0.50 + spikeChance;
 
     let type = 'NORMAL', r = STATE.rng();
@@ -969,13 +1008,20 @@ function spawnPlatform(y) {
     else if (STATE.time > 30 && r < spikeCap) type = 'SPIKE';
     
     if (!STATE.recentTypes) STATE.recentTypes = [];
+    
+    // PHASE-4: Asla iki diken (SPIKE) arka arkaya gelmesin
+    if (type === 'SPIKE' && STATE.recentTypes.length > 0 && STATE.recentTypes[STATE.recentTypes.length - 1] === 'SPIKE') {
+        let altTypes = ['NORMAL', 'MOVING', 'FRAGILE'];
+        type = altTypes[Math.floor(STATE.rng() * altTypes.length)];
+    }
+
     if (STATE.recentTypes.length >= 2) {
         let last1 = STATE.recentTypes[STATE.recentTypes.length - 1];
         let last2 = STATE.recentTypes[STATE.recentTypes.length - 2];
         if (last1 === type && last2 === type) {
             let altTypes = ['NORMAL', 'MOVING', 'FRAGILE', 'SPIKE'].filter(t => t !== type);
             type = altTypes[Math.floor(STATE.rng() * altTypes.length)];
-            if (type === 'SPIKE' && STATE.rng() > spikeCap) type = 'NORMAL'; 
+            if (type === 'SPIKE' && last1 === 'SPIKE') type = 'NORMAL';
         }
     }
     STATE.recentTypes.push(type);
@@ -1084,16 +1130,23 @@ function handleSweptCollisions() {
 let lastRenderedScore = -1;
 const DOM = {
     score: document.getElementById('hudScore'), combo: document.getElementById('hudCombo'), ghostDiff: document.getElementById('hudDiff'), menuHigh: document.getElementById('menuHighScore'), goScore: document.getElementById('goScore'), goBest: document.getElementById('goBestScore'),
-    screens: { menu: document.getElementById('screen-menu'), gameover: document.getElementById('screen-gameover'), pause: document.getElementById('screen-pause'), hud: document.getElementById('hud'), revive: document.getElementById('screen-revive'), countdown: document.getElementById('screen-countdown') },
+    screens: { menu: document.getElementById('screen-menu'), gameover: document.getElementById('screen-gameover'), pause: document.getElementById('screen-pause'), hud: document.getElementById('hud'), revive: document.getElementById('screen-revive'), countdown: document.getElementById('screen-countdown'), tutorial: document.getElementById('screen-tutorial') },
     countdownText: document.getElementById('countdown-text'),
     
     show(screenId) { 
         for (let key in this.screens) this.screens[key].classList.add('hidden'); 
-        if (screenId) this.screens[screenId].classList.remove('hidden'); 
+        if (screenId) {
+            if (Array.isArray(screenId)) {
+                screenId.forEach(id => this.screens[id].classList.remove('hidden'));
+            } else {
+                this.screens[screenId].classList.remove('hidden'); 
+            }
+        }
         
         const muteBtn = document.getElementById('btn-mute');
         if (muteBtn) {
-            muteBtn.style.display = (screenId === 'menu') ? 'flex' : 'none';
+            let isMenu = Array.isArray(screenId) ? screenId.includes('menu') : screenId === 'menu';
+            muteBtn.style.display = isMenu ? 'flex' : 'none';
         }
     },
     
@@ -1105,7 +1158,7 @@ const DOM = {
 let animationFrameId = null;
 
 function startGame(isGhost = false) {
-    AudioSys.init(); MusicSys.init(); STATE.mode = 'PLAYING'; STATE.score = 0; STATE.time = 0; 
+    AudioSys.init(); MusicSys.init(); STATE.score = 0; STATE.time = 0; 
     STATE.scrollSpeed = CONFIG.physics.baseScrollSpeed; STATE.freezeSpeed = 0;
     
     updatePhysicsMetrics();
@@ -1142,9 +1195,18 @@ function startGame(isGhost = false) {
     player.reset(); platforms = []; ParticleSys.reset(); FloatingTextSys.reset();
     
     STATE.lastPlatformX = cw / 2 - 50; platforms.push(new Platform(ch / 2 + 100, 'NORMAL', 100, STATE.lastPlatformX));
-    for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < ch * 2; y += STATE.effectiveGapY) spawnPlatform(y);
     
-    DOM.show('hud'); DOM.updateScore(true);
+    // PHASE-1: Başlangıç toplu platform üretimi minimuma çekildi (ch * 1.5 kadar)
+    let targetY = ch + STATE.effectiveGapY * 1.5;
+    for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
+        spawnPlatform(y);
+    }
+    
+    // PHASE-2: Tutorial Moduna Geçiş
+    STATE.mode = 'TUTORIAL';
+    DOM.show(['hud', 'tutorial']); 
+    DOM.updateScore(true);
+    
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     accumulator = 0;
     lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop);
@@ -1164,10 +1226,18 @@ function showRealGameOver(reason) {
         Storage.saveGhost();
     }
     
+    if (MusicSys.masterGain) {
+        MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.15);
+    }
+    
     DOM.goScore.textContent = STATE.score; DOM.goBest.textContent = STATE.bestScore; DOM.show('gameover');
 }
 
 function triggerGameOver(reason = 'FALL') {
+    if (STATE.isGhostRace) {
+        STATE.reviveUsed = true;
+    }
+    
     STATE.mode = 'DEATH_ANIMATION';
     STATE.deathTimer = 0;
     STATE.deathReason = reason;
@@ -1265,7 +1335,9 @@ function initUI() {
             STATE.lastPlatformX = cw / 2 - reviveW / 2;
             platforms.push(new Platform(ch / 2 + 50, 'NORMAL', reviveW, STATE.lastPlatformX));
             
-            for (let y = ch / 2 + 50 + STATE.effectiveGapY; y < ch * 2; y += STATE.effectiveGapY) {
+            // PHASE-1: Revive toplu platform üretimi minimuma çekildi
+            let targetY = ch + STATE.effectiveGapY * 1.5;
+            for (let y = ch / 2 + 50 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
                 spawnPlatform(y);
             }
             
@@ -1437,7 +1509,11 @@ function updateLogic(dt) {
         }
     }
     
-    if (lowestY < ch + STATE.effectiveGapY) spawnPlatform(lowestY + STATE.effectiveGapY);
+    // PHASE-1: Platformların dikey üretimi while döngüsü ile garantilendi ve daha erken spawn ediliyor
+    while (lowestY < ch + STATE.effectiveGapY * 1.5) {
+        lowestY += STATE.effectiveGapY;
+        spawnPlatform(lowestY);
+    }
     ParticleSys.update(dt);
 }
 
@@ -1529,9 +1605,9 @@ function render() {
         player.render(ctx, false);
     }
     
-    drawTopSpikes();
-    
     ctx.restore();
+    
+    drawTopSpikes();
     
     if(STATE.flashAlpha > 0) {
         ctx.save();
@@ -1556,7 +1632,13 @@ function gameLoop(timestamp) {
     if (isNaN(dt) || dt <= 0) dt = FIXED_STEP; 
     if (dt > 0.1) dt = 0.1; 
     
-    if (STATE.mode === 'PLAYING') {
+    // PHASE-2: Tutorial Nefes Alma Animasyonu Döngüsü
+    if (STATE.mode === 'TUTORIAL') {
+        STATE.time += dt;
+        player.y = (ch / 2 - 100) + Math.sin(STATE.time * 4) * 8;
+        player.x = cw / 2; 
+        render();
+    } else if (STATE.mode === 'PLAYING') {
         try {
             accumulator += dt;
             while (accumulator >= FIXED_STEP) {
