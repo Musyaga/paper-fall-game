@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -88,7 +88,7 @@
         .btn-ghost:hover { background: #bdbdbd; color: #111; border-color: #111; }
 
         .stat-box { background: #fff; border: 3px solid var(--text-dark); padding: 10px 20px; border-radius: 5px 12px 8px 5px; margin-bottom: 15px; width: 100%; display: flex; justify-content: space-between; font-weight: 700; font-size: clamp(1rem, 4.5vw, 1.2rem); box-shadow: 3px 3px 0px rgba(0,0,0,0.1); }
-        .stat-label { color: #555; }
+        .stat-label { color: #555; text-transform: uppercase; }
         
         #debug-panel { position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); border: 2px solid var(--ink-red); color: var(--text-dark); padding: 10px; font-family: monospace; font-size: 12px; z-index: 100; pointer-events: none; border-radius: 5px; display: none; font-weight: bold; }
         
@@ -127,13 +127,13 @@
             <h1>PAPER FALL</h1>
             <p>DOODLE SURVIVAL</p>
             <div class="stat-box" style="justify-content: center; margin-bottom: 20px; border-style: dashed;">
-                <span class="stat-label" style="margin-right: 10px;">EN İYİ SKOR:</span>
+                <span class="stat-label" style="margin-right: 10px;">BEST SCORE:</span>
                 <span id="menuHighScore" style="color: var(--ink-blue);">0</span>
             </div>
-            <button class="btn btn-play" id="btn-play" style="margin-bottom: 10px;">OYNA</button>
+            <button class="btn btn-play" id="btn-play" style="margin-bottom: 10px;">PLAY</button>
             
-            <button class="btn btn-ghost" id="btn-ghost">HAYALET YARIŞI</button>
-            <div id="ghost-msg" style="color: var(--ink-red); font-size: 1rem; margin-top: 10px; font-weight: bold; display: none;">Henüz bir hayalet yok — önce normal modda oyna ve bir skor yap!</div>
+            <button class="btn btn-ghost" id="btn-ghost">GHOST RACE</button>
+            <div id="ghost-msg" style="color: var(--ink-red); font-size: 1rem; margin-top: 10px; font-weight: bold; display: none;">No ghost yet — play normal mode first and set a score!</div>
         </div>
         
         <div id="screen-tutorial" class="hidden" style="position: absolute; bottom: 15%; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; pointer-events: none;">
@@ -143,16 +143,16 @@
                     <path d="M16 8l4 4-4 4"></path>
                     <path d="M4 12h16"></path>
                 </svg>
-                <div style="font-size: clamp(2rem, 10vw, 3rem); font-weight: 700; font-family: 'Kalam', cursive; margin-top: 10px; text-shadow: 2px 2px 0px rgba(0,0,0,0.1);">SÜRÜKLE</div>
+                <div style="font-size: clamp(2rem, 10vw, 3rem); font-weight: 700; font-family: 'Kalam', cursive; margin-top: 10px; text-shadow: 2px 2px 0px rgba(0,0,0,0.1);">DRAG</div>
             </div>
         </div>
 
         <div id="screen-revive" class="panel interactive hidden">
-            <h2>HAYATA DÖN</h2>
-            <p>Reklam izle ve devam et</p>
+            <h2>REVIVE</h2>
+            <p>Watch ad to continue</p>
             <div id="revive-counter" style="font-size: clamp(3.5rem, 15vw, 5rem); font-weight: 700; color: var(--ink-red); margin-bottom: 20px;">5</div>
-            <button class="btn btn-play" id="btn-revive-ad">REKLAM İZLE</button>
-            <button class="btn" id="btn-skip-revive" style="font-size: clamp(1rem, 4vw, 1.2rem); background: transparent; border: none; box-shadow: none; text-decoration: underline;">ATLA</button>
+            <button class="btn btn-play" id="btn-revive-ad">WATCH AD</button>
+            <button class="btn" id="btn-skip-revive" style="font-size: clamp(1rem, 4vw, 1.2rem); background: transparent; border: none; box-shadow: none; text-decoration: underline;">SKIP</button>
         </div>
 
         <div id="screen-countdown" class="panel interactive hidden" style="background: transparent; border: none; box-shadow: none;">
@@ -160,25 +160,25 @@
         </div>
 
         <div id="screen-gameover" class="panel interactive hidden">
-            <h2>OYUN BİTTİ</h2>
+            <h2>GAME OVER</h2>
             <div id="goScore" style="margin-bottom: 25px; font-size: clamp(3.5rem, 15vw, 4.5rem); transform: rotate(-2deg); font-weight: 700; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); color: #111;">0</div>
             
             <div style="width: 100%; max-width: 300px; margin-bottom: 20px;">
                 <div class="stat-box">
-                    <span class="stat-label">REKOR</span>
+                    <span class="stat-label">BEST</span>
                     <span id="goBestScore" style="color: var(--ink-blue);">0</span>
                 </div>
             </div>
 
             <div style="display:flex; align-items:center; width: 100%; max-width: 300px; flex-direction: column;">
-                <button class="btn btn-play" id="btn-retry">TEKRAR DENE</button>
-                <button class="btn" id="btn-menu">ANA MENÜ</button>
+                <button class="btn btn-play" id="btn-retry">RETRY</button>
+                <button class="btn" id="btn-menu">MAIN MENU</button>
             </div>
         </div>
 
         <div id="screen-pause" class="panel interactive hidden">
-            <h2>MOLA VERİLDİ</h2>
-            <button class="btn btn-play" id="btn-resume">DEVAM ET</button>
+            <h2>PAUSED</h2>
+            <button class="btn btn-play" id="btn-resume">RESUME</button>
         </div>
 
     </div>
@@ -204,6 +204,7 @@ const CONFIG = {
         maxComboMultiplier: 5,
         speedFreezeScore: 3500 
     },
+    wind: { minScoreGap: 300, heightRange: [300, 600] },
     performance: { maxDPR: 1.0, particleLimit: 40 },
     themes: [
         { 
@@ -259,6 +260,7 @@ const STATE = {
     deathTimer: 0, deathPhase: 0, deathParticles: [],
     
     recentTypes: [],
+    windZones: [], lastWindScore: 0, recentWindDirs: [], windOffset: 0,
     freezeSpeed: 0,
     rng: Math.random,
     currentSeed: 0,
@@ -316,6 +318,7 @@ function createPatternForTheme(theme) {
 }
 
 function initCanvas() {
+    if (!canvas.parentElement) return;
     const rect = canvas.parentElement.getBoundingClientRect();
     dpr = Math.min(window.devicePixelRatio || 1, CONFIG.performance.maxDPR);
     cw = rect.width || window.innerWidth || 320; 
@@ -391,8 +394,10 @@ const ScreenShake = {
     }
 };
 
+// YENİ GÜVENLİ SES SİSTEMİ
 const AudioSys = {
     ctx: null, pool: [], poolSize: 15,
+    windSource: null, windGain: null, windFilter: null,
     init() { 
         try { 
             if (!this.ctx) { 
@@ -404,12 +409,40 @@ const AudioSys = {
             if (this.ctx && this.ctx.state === 'suspended') {
                 this.ctx.resume().catch(()=>{}); 
             }
+            
+            if (this.ctx && !this.windSource) {
+                for(let i=0; i<this.poolSize; i++) {
+                    const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                    gain.gain.value = 0; osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); this.pool.push({ osc, gain, releaseTime: 0 });
+                }
+                
+                this.windGain = this.ctx.createGain();
+                this.windGain.gain.value = 0;
+                this.windFilter = this.ctx.createBiquadFilter();
+                this.windFilter.type = 'bandpass';
+                this.windFilter.frequency.value = 500;
+                this.windFilter.Q.value = 0.5;
+
+                this.windFilter.connect(this.windGain);
+                this.windGain.connect(this.ctx.destination);
+
+                let bufSize = this.ctx.sampleRate * 2; 
+                let buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+                let data = buf.getChannelData(0);
+                for(let i=0; i<bufSize; i++) data[i] = Math.random() * 2 - 1;
+                this.windSource = this.ctx.createBufferSource();
+                this.windSource.buffer = buf;
+                this.windSource.loop = true;
+                this.windSource.connect(this.windFilter);
+                this.windSource.start();
+            }
         } catch(e) {} 
     },
     play(type) {
         if (!this.ctx || this.ctx.state !== 'running' || Storage.settings.muted) return;
         try {
-            MusicSys.duck();
+            if (MusicSys && MusicSys.duck) MusicSys.duck();
             const now = this.ctx.currentTime;
             
             if (type === 'death') {
@@ -436,70 +469,79 @@ const AudioSys = {
                 return;
             }
 
-            let osc = this.ctx.createOscillator();
-            let gain = this.ctx.createGain();
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
+            let node = this.pool.find(p => p.releaseTime < now);
+            if (!node) return; 
             
-            gain.gain.setValueAtTime(0, now);
-            let releaseTime = now;
+            node.osc.frequency.cancelScheduledValues(now);
+            node.gain.gain.cancelScheduledValues(now);
+            node.gain.gain.setValueAtTime(0, now);
             
             if (type === 'land') {
-                osc.type = 'triangle'; 
-                osc.frequency.setValueAtTime(300, now); 
-                osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
-                gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
-                gain.gain.linearRampToValueAtTime(0, now + 0.05);
-                releaseTime = now + 0.05;
+                node.osc.type = 'triangle'; 
+                node.osc.frequency.setValueAtTime(300, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
+                node.gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+                node.gain.gain.linearRampToValueAtTime(0, now + 0.05);
+                node.releaseTime = now + 0.05;
             } else if (type === 'break') {
-                osc.type = 'sawtooth'; 
-                osc.frequency.setValueAtTime(100, now); 
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                gain.gain.linearRampToValueAtTime(0.1, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-                gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                releaseTime = now + 0.1;
+                node.osc.type = 'sawtooth'; 
+                node.osc.frequency.setValueAtTime(100, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                node.gain.gain.linearRampToValueAtTime(0.1, now + 0.005);
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                node.releaseTime = now + 0.1;
             } else if (type === 'perfect') {
-                osc.type = 'sine'; 
-                osc.frequency.setValueAtTime(400, now); 
-                osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-                gain.gain.linearRampToValueAtTime(0.12, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-                gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                releaseTime = now + 0.1;
+                node.osc.type = 'sine'; 
+                node.osc.frequency.setValueAtTime(400, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                node.gain.gain.linearRampToValueAtTime(0.12, now + 0.005);
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                node.releaseTime = now + 0.1;
             } else if (type === 'nearmiss') {
-                osc.type = 'sawtooth'; 
-                osc.frequency.setValueAtTime(800, now); 
-                osc.frequency.exponentialRampToValueAtTime(2000, now + 0.1);
-                gain.gain.linearRampToValueAtTime(0.06, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-                gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                releaseTime = now + 0.1;
+                node.osc.type = 'sawtooth'; 
+                node.osc.frequency.setValueAtTime(800, now); 
+                node.osc.frequency.exponentialRampToValueAtTime(2000, now + 0.1);
+                node.gain.gain.linearRampToValueAtTime(0.06, now + 0.005);
+                node.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                node.gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                node.releaseTime = now + 0.1;
             } else if (type === 'crack') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                releaseTime = now + 0.1;
+                node.osc.type = 'square';
+                node.osc.frequency.setValueAtTime(200, now);
+                node.osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                node.gain.gain.setValueAtTime(0.3, now);
+                node.gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                node.releaseTime = now + 0.1;
             } else if (type === 'shatter') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(500, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
-                gain.gain.setValueAtTime(0.4, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                releaseTime = now + 0.4;
+                node.osc.type = 'sawtooth';
+                node.osc.frequency.setValueAtTime(500, now);
+                node.osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+                node.gain.gain.setValueAtTime(0.4, now);
+                node.gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                node.releaseTime = now + 0.4;
                 
-                if (MusicSys.ctx) {
+                if (MusicSys && MusicSys.ctx) {
                     MusicSys.playNoise(now, 0.4, MusicSys.percGain, 0.5);
                 }
             }
-            
-            osc.start(now);
-            osc.stop(releaseTime);
         } catch(e) {
             if (DEBUG_MODE) console.warn("Audio Error:", e);
+        }
+    },
+    updateWindAudio(isActive, normStrength) {
+        if (!this.ctx || this.ctx.state !== 'running' || Storage.settings.muted) {
+            if (this.windGain) this.windGain.gain.value = 0;
+            return;
+        }
+        if (this.windGain && this.windFilter) {
+            let targetGain = isActive ? 0.05 + normStrength * 0.15 : 0;
+            let targetFreq = isActive ? 400 + normStrength * 1200 : 400;
+            let now = this.ctx.currentTime;
+            this.windGain.gain.setTargetAtTime(targetGain, now, 0.2); 
+            this.windFilter.frequency.setTargetAtTime(targetFreq, now, 0.2);
         }
     }
 };
@@ -614,12 +656,14 @@ const MusicSys = {
         this.duckLevel += (targetDuck - this.duckLevel) * 15 * dt;
         
         let now = this.ctx.currentTime;
-        this.masterGain.gain.setTargetAtTime(Storage.settings.muted ? 0 : this.duckLevel, now, 0.05);
+        if (this.masterGain) {
+            this.masterGain.gain.setTargetAtTime(Storage.settings.muted ? 0 : this.duckLevel, now, 0.05);
+        }
 
         let targetPad = (STATE.score >= 300) ? 1.0 : 0.0;
         let targetPerc = (STATE.score >= 700) ? 0.3 : 0.0;
-        this.padGain.gain.setTargetAtTime(targetPad, now, 0.1);
-        this.percGain.gain.setTargetAtTime(targetPerc, now, 0.1);
+        if (this.padGain) this.padGain.gain.setTargetAtTime(targetPad, now, 0.1);
+        if (this.percGain) this.percGain.gain.setTargetAtTime(targetPerc, now, 0.1);
 
         this.schedule();
     }
@@ -627,7 +671,7 @@ const MusicSys = {
 
 const FloatingTextSys = {
     pool: [],
-    init() { for(let i=0; i<10; i++) this.pool.push({active: false, text: '', x: 0, y: 0, life: 0, color: ''}); },
+    init() { for(let i=0; i<15; i++) this.pool.push({active: false, text: '', x: 0, y: 0, life: 0, color: ''}); },
     add(text, x, y, color) {
         let t = this.pool.find(p => !p.active);
         if (t) { t.active = true; t.text = text; t.x = x; t.y = y; t.life = 1.0; t.color = color; }
@@ -660,10 +704,109 @@ const FloatingTextSys = {
     reset() { this.pool.forEach(t => t.active = false); }
 };
 
+const WindParticleSys = {
+    pool: [],
+    init() { for(let i=0; i<80; i++) this.pool.push({ active: false, x: 0, y: 0, len: 0, speed: 0, opacity: 0, isPaper: false, rot: 0, rotSpeed: 0, size: 0 }); },
+    spawn(dir, yTop, yBottom) {
+        let p = this.pool.find(p => !p.active);
+        if (p) {
+            p.active = true;
+            p.x = dir === 1 ? -50 : cw + 50;
+            p.y = yTop + Math.random() * (yBottom - yTop);
+            p.isPaper = Math.random() < 0.3;
+            
+            if (p.isPaper) {
+                p.speed = dir * (200 + Math.random() * 300);
+                p.size = 5 + Math.random() * 8;
+                p.rot = Math.random() * Math.PI * 2;
+                p.rotSpeed = (Math.random() - 0.5) * 10;
+                p.opacity = 0.6 + Math.random() * 0.4;
+            } else {
+                p.speed = dir * (600 + Math.random() * 600);
+                p.len = 40 + Math.random() * 120;
+                p.opacity = 0.2 + Math.random() * 0.3;
+            }
+        }
+    },
+    update(dt) {
+        this.pool.forEach(p => {
+            if (p.active) {
+                p.x += p.speed * dt;
+                p.y -= STATE.scrollSpeed * dt;
+                if (p.isPaper) {
+                    p.rot += p.rotSpeed * dt;
+                    p.y += Math.sin(p.x * 0.05) * 2; 
+                }
+                if (p.speed > 0 && p.x > cw + 100) p.active = false;
+                if (p.speed < 0 && p.x < -100) p.active = false;
+            }
+        });
+    },
+    render(ctx) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        this.pool.forEach(p => {
+            if (p.active) {
+                ctx.globalAlpha = p.opacity;
+                if (p.isPaper) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot);
+                    ctx.fillStyle = STATE.activeColors.paper;
+                    ctx.strokeStyle = STATE.activeColors.textColor;
+                    ctx.lineWidth = 1;
+                    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.strokeRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.restore();
+                } else {
+                    ctx.lineWidth = 2 + Math.random() * 2; 
+                    ctx.strokeStyle = STATE.activeColors.textColor; 
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    let s = p.speed > 0 ? 1 : -1;
+                    ctx.lineTo(p.x - s * p.len, p.y);
+                    ctx.stroke();
+                }
+            }
+        });
+        ctx.restore();
+    },
+    reset() { this.pool.forEach(p => p.active = false); }
+};
+
+function drawWindIndicators(ctx) {
+    ctx.save();
+    ctx.fillStyle = '#E74C3C';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    STATE.windZones.forEach(z => {
+        if (z.active && z.yBottom > 0 && z.yTop < ch) {
+            let drawY = Math.max(40, Math.min(ch - 40, z.yTop + 40));
+            let arrow = z.dir === 1 ? '▶' : '◀';
+            let drawX = z.dir === 1 ? 25 : cw - 25;
+            ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 150) * 0.3; 
+            ctx.strokeText(arrow, drawX, drawY);
+            ctx.fillText(arrow, drawX, drawY);
+            
+            let drawYBot = Math.max(40, Math.min(ch - 40, z.yBottom - 40));
+            if (Math.abs(drawY - drawYBot) > 100) {
+                ctx.strokeText(arrow, drawX, drawYBot);
+                ctx.fillText(arrow, drawX, drawYBot);
+            }
+        }
+    });
+    ctx.restore();
+}
+
 const Input = {
     keys: { left: false, right: false },
     pointerDown: false,
-    pointerX: null,
+    lastPointerX: null,
+    deltaX: 0,
+    
     init() {
         window.addEventListener('keydown', (e) => { 
             if (STATE.mode === 'TUTORIAL') {
@@ -692,7 +835,14 @@ const Input = {
                 if (e.cancelable) e.preventDefault();
             }
 
-            if (e.type === 'pointerdown' || e.type === 'pointermove' || e.type === 'touchstart' || e.type === 'touchmove' || e.type === 'mousedown' || e.type === 'mousemove') {
+            let clientX = null;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+            } else if (e.clientX !== undefined) {
+                clientX = e.clientX;
+            }
+
+            if (e.type === 'pointerdown' || e.type === 'touchstart' || e.type === 'mousedown') {
                 if (STATE.mode === 'TUTORIAL') {
                     STATE.mode = 'PLAYING';
                     STATE.time = 0;
@@ -701,14 +851,18 @@ const Input = {
                     accumulator = 0;
                 }
                 this.pointerDown = true;
-                if (e.touches && e.touches.length > 0) {
-                    this.pointerX = e.touches[0].clientX;
-                } else if (e.clientX !== undefined) {
-                    this.pointerX = e.clientX;
+                if (clientX !== null) {
+                    this.lastPointerX = clientX;
+                    this.deltaX = 0;
+                }
+            } else if (e.type === 'pointermove' || e.type === 'touchmove' || e.type === 'mousemove') {
+                if (this.pointerDown && clientX !== null && this.lastPointerX !== null) {
+                    this.deltaX += (clientX - this.lastPointerX);
+                    this.lastPointerX = clientX;
                 }
             } else {
                 this.pointerDown = false;
-                this.pointerX = null;
+                this.lastPointerX = null;
             }
         };
         
@@ -742,15 +896,13 @@ const player = {
         this.x = cw / 2; this.y = ch / 2 - 100; 
         this.prevX = this.x; this.prevY = this.y; 
         this.vx = 0; this.vy = 0; this.keyboardVx = 0; this.invincible = 0;
-        Input.pointerDown = false; Input.pointerX = null;
+        Input.pointerDown = false; Input.lastPointerX = null; Input.deltaX = 0;
     },
     
     update(dt) {
         if (!isFinite(this.x)) this.x = cw / 2;
         if (!isFinite(this.y)) this.y = ch / 2;
-        if (!isFinite(this.vx)) this.vx = 0;
-        if (!isFinite(this.vy)) this.vy = 0;
-
+        
         this.prevX = this.x;
         this.prevY = this.y;
         
@@ -758,17 +910,57 @@ const player = {
             this.invincible -= dt;
         }
         
-        if (Input.pointerDown && Input.pointerX !== null && isFinite(Input.pointerX)) {
-            let targetX = Math.max(this.radius, Math.min(cw - this.radius, Input.pointerX));
+        let inWind = false;
+        let wDir = 0, wStr = 0;
+        let activeWindMaxNorm = 0;
+        
+        if (this.invincible <= 0 && STATE.mode === 'PLAYING') {
+            for (let i = 0; i < STATE.windZones.length; i++) {
+                let z = STATE.windZones[i];
+                if (z.active && this.y >= z.yTop && this.y <= z.yBottom) {
+                    inWind = true;
+                    z.entered = true; 
+                    
+                    let distToEdge = Math.min(this.y - z.yTop, z.yBottom - this.y);
+                    let edgeFade = Math.max(0, Math.min(1, distToEdge / 80));
+
+                    let gustMult = 0.5 + 0.5 * Math.sin(STATE.time * z.gustFrequency + z.phase);
+                    let effStr = z.strength * gustMult * edgeFade;
+
+                    wDir = z.dir;
+                    wStr = effStr;
+
+                    let norm = effStr / 300;
+                    if (norm > activeWindMaxNorm) activeWindMaxNorm = norm;
+                    break;
+                }
+            }
+        }
+        
+        try { AudioSys.updateWindAudio(inWind, activeWindMaxNorm); } catch(e){}
+
+        if (inWind) {
+            STATE.windOffset += wDir * wStr * dt;
+        } else {
+            STATE.windOffset *= (1 - 3 * dt);
+            if (Math.abs(STATE.windOffset) < 0.5) STATE.windOffset = 0;
+        }
+        STATE.windOffset = Math.max(-80, Math.min(80, STATE.windOffset));
+
+        if (Input.pointerDown) {
+            let rawTarget = Math.max(this.radius, Math.min(cw - this.radius, this.x + Input.deltaX * 1.2));
+            let targetX = Math.max(this.radius, Math.min(cw - this.radius, rawTarget + (inWind ? wDir * wStr * dt : 0)));
             this.vx = (targetX - this.x) / dt; 
             this.x = targetX;
+            Input.deltaX = 0;
             this.keyboardVx = 0;
         } else {
             const axis = Input.getAxis(); 
             let targetVx = axis * CONFIG.physics.maxHorizontalSpeed;
             if (axis !== 0) this.keyboardVx += (targetVx - this.keyboardVx) * 25 * dt; 
             else this.keyboardVx -= this.keyboardVx * 20 * dt;
-            this.x += this.keyboardVx * dt;
+            
+            this.x += (this.keyboardVx + (inWind ? wDir * wStr : 0)) * dt;
             this.x = Math.max(this.radius, Math.min(cw - this.radius, this.x));
             this.vx = this.keyboardVx;
         }
@@ -950,53 +1142,40 @@ function updatePhysicsMetrics() {
     }
 }
 
-const ParticleSys = {
-    pool: [],
-    init() { for(let i=0; i<CONFIG.performance.particleLimit; i++) this.pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '' }); },
-    spawn(x, y, count, color) {
-        let spawned = 0;
-        for(let i=0; i<this.pool.length; i++) {
-            if(!this.pool[i].active) {
-                let p = this.pool[i];
-                p.active = true; p.x = x; p.y = y;
-                p.vx = (Math.random() - 0.5) * 300; p.vy = (Math.random() - 1.0) * 300;
-                p.life = 1.0; p.color = color;
-                spawned++; if(spawned >= count) break;
-            }
-        }
-    },
-    update(dt) {
-        for(let i=0; i<this.pool.length; i++) {
-            let p = this.pool[i];
-            if(p.active) {
-                p.vy += CONFIG.physics.gravity * 0.5 * dt; p.x += p.vx * dt; p.y += (p.vy + STATE.scrollSpeed) * dt; p.life -= dt * 2;
-                if(p.life <= 0) p.active = false;
-            }
-        }
-    },
-    render(ctx) {
-        let batches = {};
-        for(let i=0; i<this.pool.length; i++) {
-            let p = this.pool[i];
-            if(p.active) {
-                let alpha = Math.max(0.1, Math.ceil(p.life * 10) / 10).toFixed(1);
-                let key = p.color + '_' + alpha;
-                if(!batches[key]) batches[key] = new Path2D();
-                batches[key].rect(Math.floor(p.x - 3), Math.floor(p.y - 3), 6, 6);
-            }
-        }
-        for(let key in batches) {
-            let parts = key.split('_');
-            ctx.globalAlpha = parseFloat(parts[1]);
-            ctx.fillStyle = parts[0];
-            ctx.fill(batches[key]);
-        }
-        ctx.globalAlpha = 1.0;
-    },
-    reset() { for(let i=0; i<this.pool.length; i++) this.pool[i].active = false; }
-};
+function trySpawnWindZone(lowestY) {
+    let diffRatio = Math.min(1, STATE.score / CONFIG.physics.speedFreezeScore);
+    
+    let currentChance = 0.15 + 0.45 * diffRatio; 
+    if (STATE.rng() > currentChance) return;
 
-let platforms = [];
+    let minStr = 80 + 80 * diffRatio;
+    let maxStr = 120 + 180 * diffRatio;
+
+    let h = Math.floor(STATE.rng() * (CONFIG.wind.heightRange[1] - CONFIG.wind.heightRange[0]) + CONFIG.wind.heightRange[0]);
+    let yBot = lowestY + CONFIG.physics.gapY * 2; 
+    let yTop = yBot - h;
+    
+    let hasSpike = platforms.some(p => p.active && p.type === 'SPIKE' && p.y >= yTop - 80 && p.y <= yBot + 80);
+    
+    if (!hasSpike) {
+        let dir = STATE.rng() < 0.5 ? -1 : 1;
+        if (STATE.recentWindDirs.length >= 2 && STATE.recentWindDirs[0] === STATE.recentWindDirs[1]) {
+            dir = STATE.recentWindDirs[0] === 1 ? -1 : 1;
+        }
+        STATE.recentWindDirs.push(dir);
+        if (STATE.recentWindDirs.length > 2) STATE.recentWindDirs.shift();
+        
+        let str = STATE.rng() * (maxStr - minStr) + minStr;
+        let phase = STATE.rng() * Math.PI * 2;
+        let freq = STATE.rng() * 1.5 + 0.5;
+
+        STATE.windZones.push({ 
+            active: true, yTop: yTop, yBottom: yBot, dir: dir, strength: str,
+            phase: phase, gustFrequency: freq,
+            entered: false, failed: false, rewarded: false
+        });
+    }
+}
 
 function spawnPlatform(y) {
     let speedRatio = (STATE.scrollSpeed - CONFIG.physics.baseScrollSpeed) / (CONFIG.physics.maxScrollSpeed - CONFIG.physics.baseScrollSpeed);
@@ -1051,13 +1230,15 @@ function updateComboUI(reset = false) {
     STATE.comboMultiplier = Math.min(CONFIG.physics.maxComboMultiplier, 1.0 + (STATE.combo * 0.1));
     
     if (STATE.combo > 0) {
-        DOM.combo.textContent = `x${STATE.comboMultiplier.toFixed(1)}`;
-        DOM.combo.style.display = 'block';
-        DOM.combo.classList.remove('punch');
-        void DOM.combo.offsetWidth; 
-        DOM.combo.classList.add('punch');
+        if (DOM.combo) {
+            DOM.combo.textContent = `x${STATE.comboMultiplier.toFixed(1)}`;
+            DOM.combo.style.display = 'block';
+            DOM.combo.classList.remove('punch');
+            void DOM.combo.offsetWidth; 
+            DOM.combo.classList.add('punch');
+        }
     } else {
-        DOM.combo.style.display = 'none';
+        if (DOM.combo) DOM.combo.style.display = 'none';
     }
 }
 
@@ -1110,7 +1291,7 @@ function handleSweptCollisions() {
                 let earned = Math.floor(25 * STATE.comboMultiplier);
                 STATE.score += earned;
                 STATE.combo += 2;
-                FloatingTextSys.add(`MÜKEMMEL! +${earned}`, player.x, snapY - 30, '#ffeb3b');
+                FloatingTextSys.add(`PERFECT! +${earned}`, player.x, snapY - 30, '#ffeb3b');
                 AudioSys.play('perfect');
                 ParticleSys.spawn(player.x, snapY, 12, '#ffeb3b');
                 ScreenShake.trigger(2, 0.1);
@@ -1134,12 +1315,16 @@ const DOM = {
     countdownText: document.getElementById('countdown-text'),
     
     show(screenId) { 
-        for (let key in this.screens) this.screens[key].classList.add('hidden'); 
+        for (let key in this.screens) {
+            if (this.screens[key]) this.screens[key].classList.add('hidden'); 
+        }
         if (screenId) {
             if (Array.isArray(screenId)) {
-                screenId.forEach(id => this.screens[id].classList.remove('hidden'));
+                screenId.forEach(id => {
+                    if (this.screens[id]) this.screens[id].classList.remove('hidden');
+                });
             } else {
-                this.screens[screenId].classList.remove('hidden'); 
+                if (this.screens[screenId]) this.screens[screenId].classList.remove('hidden'); 
             }
         }
         
@@ -1150,7 +1335,14 @@ const DOM = {
         }
     },
     
-    updateScore(force = false) { let current = Math.floor(STATE.score); if (current !== lastRenderedScore || force) { this.score.textContent = current; lastRenderedScore = current; } },
+    updateScore(force = false) { 
+        if (!this.score) return;
+        let current = Math.floor(STATE.score); 
+        if (current !== lastRenderedScore || force) { 
+            this.score.textContent = current; 
+            lastRenderedScore = current; 
+        } 
+    },
     muteIcon: document.getElementById('icon-mute'),
     unmuteIcon: document.getElementById('icon-unmute')
 };
@@ -1158,57 +1350,66 @@ const DOM = {
 let animationFrameId = null;
 
 function startGame(isGhost = false) {
-    AudioSys.init(); MusicSys.init(); STATE.score = 0; STATE.time = 0; 
-    STATE.scrollSpeed = CONFIG.physics.baseScrollSpeed; STATE.freezeSpeed = 0;
-    
-    updatePhysicsMetrics();
-    
-    STATE.fallDistance = 0; 
-    STATE.currentThemeIdx = 0; STATE.targetThemeIdx = 0; STATE.themeLerpT = 1.0; STATE.flashAlpha = 0;
-    STATE.reviveUsed = false; STATE.recentTypes = [];
-    STATE.activeColors = { ...CONFIG.themes[0] };
-    
-    if (isGhost && Storage.ghostData && Storage.ghostData.log && Storage.ghostData.log.length > 0) {
-        STATE.isGhostRace = true;
-        STATE.currentSeed = Storage.ghostData.seed;
-        STATE.ghostLog = Storage.ghostData.log;
-        STATE.ghostIdx = 0;
-        STATE.ghostActive = true;
-        STATE.ghostAlpha = 0.4;
-        DOM.ghostDiff.style.display = 'block';
-    } else {
-        STATE.isGhostRace = false;
-        STATE.ghostActive = false;
-        STATE.currentSeed = Date.now();
-        DOM.ghostDiff.style.display = 'none';
+    try {
+        AudioSys.init(); MusicSys.init(); STATE.score = 0; STATE.time = 0; 
+        STATE.scrollSpeed = CONFIG.physics.baseScrollSpeed; STATE.freezeSpeed = 0;
+        
+        updatePhysicsMetrics();
+        
+        STATE.fallDistance = 0; 
+        STATE.currentThemeIdx = 0; STATE.targetThemeIdx = 0; STATE.themeLerpT = 1.0; STATE.flashAlpha = 0;
+        STATE.reviveUsed = false; STATE.recentTypes = [];
+        STATE.activeColors = { ...CONFIG.themes[0] };
+        
+        STATE.windZones = [];
+        STATE.lastWindScore = 0;
+        STATE.recentWindDirs = [];
+        WindParticleSys.reset();
+        
+        if (isGhost && Storage.ghostData && Storage.ghostData.log && Storage.ghostData.log.length > 0) {
+            STATE.isGhostRace = true;
+            STATE.currentSeed = Storage.ghostData.seed;
+            STATE.ghostLog = Storage.ghostData.log;
+            STATE.ghostIdx = 0;
+            STATE.ghostActive = true;
+            STATE.ghostAlpha = 0.4;
+            if (DOM.ghostDiff) DOM.ghostDiff.style.display = 'block';
+        } else {
+            STATE.isGhostRace = false;
+            STATE.ghostActive = false;
+            STATE.currentSeed = Date.now();
+            if (DOM.ghostDiff) DOM.ghostDiff.style.display = 'none';
+        }
+        STATE.rng = mulberry32(STATE.currentSeed);
+        
+        STATE.currentRunLog = [];
+        STATE.lastLogTime = 0;
+        
+        document.documentElement.style.setProperty('--hud-text', CONFIG.themes[0].textColor);
+        document.documentElement.style.setProperty('--hud-combo', CONFIG.themes[0].textColorSecondary);
+        bgPattern = createPatternForTheme(CONFIG.themes[0]);
+        
+        updateComboUI(true);
+        player.reset(); platforms = []; ParticleSys.reset(); FloatingTextSys.reset();
+        
+        STATE.lastPlatformX = cw / 2 - 50; platforms.push(new Platform(ch / 2 + 100, 'NORMAL', 100, STATE.lastPlatformX));
+        
+        let targetY = ch + STATE.effectiveGapY * 1.5;
+        for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
+            spawnPlatform(y);
+        }
+        
+        STATE.mode = 'TUTORIAL';
+        DOM.show(['hud', 'tutorial']); 
+        DOM.updateScore(true);
+        
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        accumulator = 0;
+        lastTime = performance.now(); 
+        animationFrameId = requestAnimationFrame(gameLoop);
+    } catch (e) {
+        console.error("Start Game Error: ", e);
     }
-    STATE.rng = mulberry32(STATE.currentSeed);
-    
-    STATE.currentRunLog = [];
-    STATE.lastLogTime = 0;
-    
-    document.documentElement.style.setProperty('--hud-text', CONFIG.themes[0].textColor);
-    document.documentElement.style.setProperty('--hud-combo', CONFIG.themes[0].textColorSecondary);
-    bgPattern = createPatternForTheme(CONFIG.themes[0]);
-    
-    updateComboUI(true);
-    player.reset(); platforms = []; ParticleSys.reset(); FloatingTextSys.reset();
-    
-    STATE.lastPlatformX = cw / 2 - 50; platforms.push(new Platform(ch / 2 + 100, 'NORMAL', 100, STATE.lastPlatformX));
-    
-    let targetY = ch + STATE.effectiveGapY * 1.5;
-    for (let y = ch / 2 + 100 + STATE.effectiveGapY; y < targetY; y += STATE.effectiveGapY) {
-        spawnPlatform(y);
-    }
-    
-    STATE.mode = 'TUTORIAL';
-    DOM.show(['hud', 'tutorial']); 
-    DOM.updateScore(true);
-    
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    accumulator = 0;
-    lastTime = performance.now(); 
-    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function pauseGame() { if (STATE.mode !== 'PLAYING') return; STATE.mode = 'PAUSED'; DOM.show('pause'); }
@@ -1225,11 +1426,15 @@ function showRealGameOver(reason) {
         Storage.saveGhost();
     }
     
-    if (MusicSys.masterGain) {
-        MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.15);
+    if (MusicSys && MusicSys.masterGain && AudioSys.ctx) {
+        try {
+            MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.15);
+        } catch(e){}
     }
     
-    DOM.goScore.textContent = STATE.score; DOM.goBest.textContent = STATE.bestScore; DOM.show('gameover');
+    if (DOM.goScore) DOM.goScore.textContent = STATE.score; 
+    if (DOM.goBest) DOM.goBest.textContent = STATE.bestScore; 
+    DOM.show('gameover');
 }
 
 function triggerGameOver(reason = 'FALL') {
@@ -1247,8 +1452,10 @@ function triggerGameOver(reason = 'FALL') {
         player.y = ch - player.radius;
     }
 
-    if (MusicSys.masterGain) {
-        MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.05);
+    if (MusicSys && MusicSys.masterGain && AudioSys.ctx) {
+        try {
+            MusicSys.masterGain.gain.setTargetAtTime(0, AudioSys.ctx.currentTime, 0.05);
+        } catch(e){}
     }
     
     AudioSys.play('crack');
@@ -1257,8 +1464,8 @@ function triggerGameOver(reason = 'FALL') {
 }
 
 function updateMuteVisuals() {
-    DOM.unmuteIcon.style.display = Storage.settings.muted ? 'none' : 'block';
-    DOM.muteIcon.style.display = Storage.settings.muted ? 'block' : 'none';
+    if (DOM.unmuteIcon) DOM.unmuteIcon.style.display = Storage.settings.muted ? 'none' : 'block';
+    if (DOM.muteIcon) DOM.muteIcon.style.display = Storage.settings.muted ? 'block' : 'none';
 }
 
 function bindBtn(id, fn) {
@@ -1270,7 +1477,7 @@ function bindBtn(id, fn) {
         let now = Date.now();
         if (now - lastTap < 300) return; 
         lastTap = now;
-        fn();
+        try { fn(); } catch(err) { console.error('Button error:', err); }
     };
     btn.addEventListener('click', handler);
     btn.addEventListener('touchstart', handler, { passive: false });
@@ -1290,8 +1497,10 @@ function initUI() {
     bindBtn('btn-ghost', () => {
         if (!Storage.ghostData || !Storage.ghostData.log || Storage.ghostData.log.length === 0) {
             const msg = document.getElementById('ghost-msg');
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 3000);
+            if (msg) {
+                msg.style.display = 'block';
+                setTimeout(() => msg.style.display = 'none', 3000);
+            }
         } else {
             startGame(true);
         }
@@ -1299,7 +1508,7 @@ function initUI() {
 
     bindBtn('btn-retry', () => startGame(STATE.isGhostRace));
     bindBtn('btn-resume', resumeGame);
-    bindBtn('btn-menu', () => { DOM.menuHigh.textContent = STATE.bestScore; DOM.show('menu'); });
+    bindBtn('btn-menu', () => { if (DOM.menuHigh) DOM.menuHigh.textContent = STATE.bestScore; DOM.show('menu'); });
     
     bindBtn('btn-revive-ad', () => {
         STATE.reviveSessionId = (STATE.reviveSessionId || 0) + 1;
@@ -1317,6 +1526,9 @@ function initUI() {
             ParticleSys.reset();
             FloatingTextSys.reset();
             
+            STATE.windZones = [];
+            WindParticleSys.reset();
+            
             player.x = cw / 2;
             player.y = ch * 0.65;
             player.prevX = player.x;
@@ -1325,7 +1537,8 @@ function initUI() {
             player.vy = 0;
             player.keyboardVx = 0;
             Input.pointerDown = false;
-            Input.pointerX = null;
+            Input.lastPointerX = null;
+            Input.deltaX = 0;
             STATE.fallDistance = 0;
             
             updatePhysicsMetrics();
@@ -1340,7 +1553,7 @@ function initUI() {
             }
             
             DOM.show('countdown');
-            DOM.countdownText.textContent = '3';
+            if (DOM.countdownText) DOM.countdownText.textContent = '3';
             accumulator = 0;
             lastTime = performance.now();
         }, 300);
@@ -1393,7 +1606,7 @@ function updateLogic(dt) {
             STATE.ghostAlpha -= dt * 2.0; 
             if (STATE.ghostAlpha <= 0) {
                 STATE.ghostActive = false;
-                DOM.ghostDiff.style.display = 'none';
+                if (DOM.ghostDiff) DOM.ghostDiff.style.display = 'none';
             }
         } else {
             let p1 = log[STATE.ghostIdx];
@@ -1408,8 +1621,10 @@ function updateLogic(dt) {
             let s2 = p2.s || p2.t * 10;
             let gScore = s1 + (s2 - s1) * ratio;
             let diff = Math.round(STATE.score - gScore);
-            DOM.ghostDiff.textContent = diff >= 0 ? "+" + diff : diff;
-            DOM.ghostDiff.style.color = diff >= 0 ? "#00e676" : "#d32f2f";
+            if (DOM.ghostDiff) {
+                DOM.ghostDiff.textContent = diff >= 0 ? "+" + diff : diff;
+                DOM.ghostDiff.style.color = diff >= 0 ? "#00e676" : "#d32f2f";
+            }
         }
     }
 
@@ -1470,7 +1685,7 @@ function updateLogic(dt) {
                         let earned = Math.floor(50 * STATE.comboMultiplier);
                         STATE.score += earned;
                         STATE.combo += 1;
-                        FloatingTextSys.add(`TEĞET! +${earned}`, player.x, player.y - 40, '#00e676');
+                        FloatingTextSys.add(`NEAR MISS! +${earned}`, player.x, player.y - 40, '#00e676');
                         AudioSys.play('nearmiss');
                         updateComboUI();
                     }
@@ -1479,17 +1694,56 @@ function updateLogic(dt) {
         }
     }
     
+    for (let i = STATE.windZones.length - 1; i >= 0; i--) {
+        let z = STATE.windZones[i];
+        z.yTop -= STATE.scrollSpeed * dt;
+        z.yBottom -= STATE.scrollSpeed * dt;
+        
+        if (z.entered && !z.failed && !z.rewarded && player.y > z.yBottom + 20) {
+            z.rewarded = true;
+            let earned = Math.floor(100 * STATE.comboMultiplier);
+            STATE.score += earned;
+            STATE.combo += 3;
+            updateComboUI();
+            FloatingTextSys.add(`WIND SURVIVED! +${earned}`, player.x, player.y - 40, '#3498db');
+            AudioSys.play('perfect');
+        }
+
+        if (z.yBottom < -100) {
+            STATE.windZones.splice(i, 1);
+        }
+    }
+    
+    if (STATE.score - STATE.lastWindScore > CONFIG.wind.minScoreGap) {
+        STATE.lastWindScore = STATE.score;
+        if (STATE.rng() < CONFIG.wind.chance) {
+            trySpawnWindZone(lowestY);
+        }
+    }
+    
+    STATE.windZones.forEach(z => {
+        if (z.active && z.yTop < ch && z.yBottom > 0) {
+            for(let i = 0; i < 2; i++) {
+                if (Math.random() < 0.8) {
+                    WindParticleSys.spawn(z.dir, Math.max(0, z.yTop), Math.min(ch, z.yBottom));
+                }
+            }
+        }
+    });
+    WindParticleSys.update(dt);
+    
     player.update(dt); 
     
     handleSweptCollisions();
     
-    MusicSys.update(dt);
+    try { MusicSys.update(dt); } catch(e){}
     
     if (player.vy > 0 && player.invincible <= 0) {
         STATE.fallDistance += (player.vy + STATE.scrollSpeed) * dt;
         if (STATE.fallDistance > STATE.effectiveGapY * 1.5 && STATE.combo > 0) {
             updateComboUI(true);
-            FloatingTextSys.add('KOMBO GİTTİ', player.x, player.y - 40, '#d32f2f');
+            FloatingTextSys.add('COMBO LOST', player.x, player.y - 40, '#d32f2f');
+            STATE.windZones.forEach(z => { if (z.entered) z.failed = true; });
         }
     } else { STATE.fallDistance = 0; }
     
@@ -1497,8 +1751,14 @@ function updateLogic(dt) {
     FloatingTextSys.update(dt);
     
     if (player.invincible <= 0) {
-        if (player.y - player.radius <= 20) { triggerGameOver('SPIKE'); return; } 
-        if (player.y - player.radius > ch) { triggerGameOver('FALL'); return; }
+        if (player.y - player.radius <= 20) { 
+            STATE.windZones.forEach(z => { if (z.entered) z.failed = true; });
+            triggerGameOver('SPIKE'); return; 
+        } 
+        if (player.y - player.radius > ch) { 
+            STATE.windZones.forEach(z => { if (z.entered) z.failed = true; });
+            triggerGameOver('FALL'); return; 
+        }
     } else {
         if (player.y - player.radius > ch) {
             player.y = ch - player.radius;
@@ -1507,7 +1767,10 @@ function updateLogic(dt) {
         }
     }
     
-    if (lowestY < ch + STATE.effectiveGapY) spawnPlatform(lowestY + STATE.effectiveGapY);
+    while (lowestY < ch + STATE.effectiveGapY * 1.5) {
+        lowestY += STATE.effectiveGapY;
+        spawnPlatform(lowestY);
+    }
     ParticleSys.update(dt);
 }
 
@@ -1565,7 +1828,9 @@ function render() {
     ctx.translate(ScreenShake.offsetX, ScreenShake.offsetY);
     
     drawBackground();
+    WindParticleSys.render(ctx);
     renderPlatforms(ctx);
+    drawWindIndicators(ctx);
     ParticleSys.render(ctx); 
     FloatingTextSys.render(ctx); 
     
@@ -1612,11 +1877,11 @@ function render() {
         ctx.restore();
     }
     
-    if (DEBUG_MODE) {
+    if (DEBUG_MODE && debugPanel) {
         frameCount++; if (performance.now() - lastFpsTime >= 1000) { currentFps = frameCount; frameCount = 0; lastFpsTime = performance.now(); }
         debugPanel.style.display = 'block'; let actParts = ParticleSys.pool.filter(p => p.active).length;
         debugPanel.innerHTML = `FPS: ${currentFps} <br>PLATS: ${platforms.length} <br>PARTS: ${actParts}/${CONFIG.performance.particleLimit} <br>SPEED: ${Math.floor(STATE.scrollSpeed)} <br>COMBO: ${STATE.combo}`;
-    } else { debugPanel.style.display = 'none'; }
+    } else if (debugPanel) { debugPanel.style.display = 'none'; }
 }
 
 function gameLoop(timestamp) {
@@ -1630,6 +1895,7 @@ function gameLoop(timestamp) {
         STATE.time += dt;
         player.y = (ch / 2 - 100) + Math.sin(STATE.time * 4) * 8;
         player.x = cw / 2;
+        try { AudioSys.updateWindAudio(false, 0); } catch(e){}
         render();
     } else if (STATE.mode === 'PLAYING') {
         try {
@@ -1647,11 +1913,12 @@ function gameLoop(timestamp) {
             } catch (err2) {
                 console.error('[Paper Fall] Yedek kurtarma da başarısız oldu:', err2);
                 STATE.mode = 'GAMEOVER';
-                DOM.show('gameover');
+                if (DOM.show) DOM.show('gameover');
             }
         }
     } else if (STATE.mode === 'DEATH_ANIMATION') {
         STATE.deathTimer += dt;
+        try { AudioSys.updateWindAudio(false, 0); } catch(e){}
         
         if (STATE.deathTimer >= 0.5 && STATE.deathPhase === 0) {
             STATE.deathPhase = 1;
@@ -1686,7 +1953,7 @@ function gameLoop(timestamp) {
             if (!STATE.reviveUsed) {
                 STATE.mode = 'REVIVE';
                 STATE.reviveTimer = 5.0;
-                DOM.show('revive');
+                if (DOM.show) DOM.show('revive');
             } else {
                 showRealGameOver(STATE.deathReason);
             }
@@ -1695,40 +1962,51 @@ function gameLoop(timestamp) {
     } else if (STATE.mode === 'COUNTDOWN') {
         STATE.countdownTimer -= dt;
         let currentSec = Math.ceil(STATE.countdownTimer);
-        DOM.countdownText.textContent = currentSec > 0 ? currentSec : 'BAŞLA!';
+        if (DOM.countdownText) DOM.countdownText.textContent = currentSec > 0 ? currentSec : 'GO!';
         
-        MusicSys.update(dt);
+        try { AudioSys.updateWindAudio(false, 0); } catch(e){}
+        try { MusicSys.update(dt); } catch(e){}
         render(); 
         
         if (STATE.countdownTimer <= -0.5) {
             STATE.mode = 'PLAYING';
             accumulator = 0;
-            DOM.show('hud');
+            if (DOM.show) DOM.show('hud');
         }
     } else if (STATE.mode === 'REVIVE') {
         STATE.reviveTimer -= dt;
-        document.getElementById('revive-counter').textContent = Math.ceil(STATE.reviveTimer);
-        MusicSys.update(dt);
+        let cText = document.getElementById('revive-counter');
+        if (cText) cText.textContent = Math.ceil(STATE.reviveTimer);
+        
+        try { AudioSys.updateWindAudio(false, 0); } catch(e){}
+        try { MusicSys.update(dt); } catch(e){}
         render(); 
+        
         if (STATE.reviveTimer <= 0) {
             STATE.reviveUsed = true;
             showRealGameOver(STATE.deathReason);
         }
     } else if (STATE.mode === 'GAMEOVER') {
         ScreenShake.update(dt);
-        MusicSys.update(dt);
+        try { AudioSys.updateWindAudio(false, 0); } catch(e){}
+        try { MusicSys.update(dt); } catch(e){}
         render();
     }
 }
 
-Storage.load(); 
-initCanvas(); 
-ParticleSys.init(); 
-FloatingTextSys.init(); 
-Input.init(); 
-initUI(); 
-DOM.menuHigh.textContent = STATE.bestScore; 
-DOM.show('menu');
+try {
+    Storage.load(); 
+    initCanvas(); 
+    ParticleSys.init(); 
+    WindParticleSys.init(); 
+    FloatingTextSys.init(); 
+    Input.init(); 
+    initUI(); 
+    if (DOM.menuHigh) DOM.menuHigh.textContent = STATE.bestScore; 
+    if (DOM.show) DOM.show('menu');
+} catch (e) {
+    console.error("Critical Initialization Error: ", e);
+}
 
 </script>
 </body>
