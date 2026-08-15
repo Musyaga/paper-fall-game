@@ -277,6 +277,7 @@ const STATE = {
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d'); 
 let cw, ch, dpr;
+let platforms = [];
 let bgPattern = null;
 let nextBgPattern = null;
 
@@ -702,6 +703,52 @@ const FloatingTextSys = {
         ctx.restore();
     },
     reset() { this.pool.forEach(t => t.active = false); }
+};
+
+const ParticleSys = {
+    pool: [],
+    init() { for(let i=0; i<CONFIG.performance.particleLimit; i++) this.pool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '' }); },
+    spawn(x, y, count, color) {
+        let spawned = 0;
+        for(let i=0; i<this.pool.length; i++) {
+            if(!this.pool[i].active) {
+                let p = this.pool[i];
+                p.active = true; p.x = x; p.y = y;
+                p.vx = (Math.random() - 0.5) * 300; p.vy = (Math.random() - 1.0) * 300;
+                p.life = 1.0; p.color = color;
+                spawned++; if(spawned >= count) break;
+            }
+        }
+    },
+    update(dt) {
+        for(let i=0; i<this.pool.length; i++) {
+            let p = this.pool[i];
+            if(p.active) {
+                p.vy += CONFIG.physics.gravity * 0.5 * dt; p.x += p.vx * dt; p.y += (p.vy + STATE.scrollSpeed) * dt; p.life -= dt * 2;
+                if(p.life <= 0) p.active = false;
+            }
+        }
+    },
+    render(ctx) {
+        let batches = {};
+        for(let i=0; i<this.pool.length; i++) {
+            let p = this.pool[i];
+            if(p.active) {
+                let alpha = Math.max(0.1, Math.ceil(p.life * 10) / 10).toFixed(1);
+                let key = p.color + '_' + alpha;
+                if(!batches[key]) batches[key] = new Path2D();
+                batches[key].rect(Math.floor(p.x - 3), Math.floor(p.y - 3), 6, 6);
+            }
+        }
+        for(let key in batches) {
+            let parts = key.split('_');
+            ctx.globalAlpha = parseFloat(parts[1]);
+            ctx.fillStyle = parts[0];
+            ctx.fill(batches[key]);
+        }
+        ctx.globalAlpha = 1.0;
+    },
+    reset() { for(let i=0; i<this.pool.length; i++) this.pool[i].active = false; }
 };
 
 const WindParticleSys = {
