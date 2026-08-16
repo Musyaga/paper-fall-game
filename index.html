@@ -11,15 +11,15 @@
     height:100%;
     overflow:hidden;
     background:#dfe8e2;
-    font-family:"Comic Sans MS",cursive;
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive;
     touch-action:none;
     user-select:none;
   }
   body{display:grid;place-items:center}
   #gameWrap{
     position:relative;
-    width:min(100vw,520px);
-    height:min(100vh,860px);
+    width:min(100vw,540px);
+    height:min(100vh,780px);
   }
   canvas{
     display:block;
@@ -31,8 +31,8 @@
   }
   #hud{
     position:absolute;
-    left:16px;
-    top:62px;
+    left:14px;
+    top:54px;
     display:flex;
     flex-direction:column;
     align-items:flex-start;
@@ -44,8 +44,8 @@
     z-index:5;
   }
   #score{
-    font-family:"Comic Sans MS",cursive;
-    font-size:19px;
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive;
+    font-size:18px;
     font-weight:900;
     letter-spacing:.35px;
     line-height:1;
@@ -55,9 +55,9 @@
     right:16px;
     top:16px;
     z-index:12;
-    width:42px;
-    height:42px;
-    min-width:42px;
+    width:46px;
+    height:46px;
+    min-width:46px;
     padding:0;
     display:grid;
     place-items:center;
@@ -65,7 +65,7 @@
     border-radius:50%;
     background:#fffaf0;
     color:#29332f;
-    font:900 20px/1 "Comic Sans MS",cursive;
+    font:900 20px/1 "Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive;
     box-shadow:0 3px 0 #29332f;
     cursor:pointer;
   }
@@ -108,7 +108,7 @@
     padding:12px 18px;
     background:#f4c95d;
     color:#29332f;
-    font:900 17px "Comic Sans MS",cursive;
+    font:900 17px "Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive;
     box-shadow:0 5px 0 #29332f;
     cursor:pointer;
   }
@@ -125,78 +125,52 @@
   #playBtn,
   button,
   #muteBtn{
-    font-family:"Comic Sans MS",cursive !important;
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive !important;
   }
 
 
   #best{
-    font-family:"Comic Sans MS",cursive;
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive;
     font-size:12px;
     font-weight:900;
     opacity:.82;
     margin-top:3px;
   }
 
-  .speakerIcon{
-    position:relative;
+  .speakerSvg{
     display:block;
-    width:25px;
-    height:22px;
+    width:24px;
+    height:24px;
   }
-  .speakerBox{
-    position:absolute;
-    left:1px;
-    top:7px;
-    width:7px;
-    height:9px;
-    border:2px solid #29332f;
-    border-radius:3px 2px 3px 2px;
-    transform:rotate(-2deg);
+  .speakerBody{
+    fill:#29332f;
   }
-  .speakerCone{
-    position:absolute;
-    left:6px;
-    top:4px;
-    width:0;
-    height:0;
-    border-top:7px solid transparent;
-    border-bottom:7px solid transparent;
-    border-right:0;
-    border-left:10px solid #29332f;
-    transform:rotate(1deg);
+  .speakerWave{
+    fill:none;
+    stroke:#29332f;
+    stroke-width:4;
+    stroke-linecap:round;
+    stroke-linejoin:round;
   }
-  .soundWave{
-    position:absolute;
-    border:2px solid #29332f;
-    border-left-color:transparent;
-    border-top-color:transparent;
-    border-bottom-color:transparent;
-    border-radius:50%;
-    transform:rotate(1deg);
-  }
-  .wave1{
-    left:14px;
-    top:6px;
-    width:7px;
-    height:10px;
-  }
-  .wave2{
-    left:16px;
-    top:3px;
-    width:10px;
-    height:16px;
-  }
-  #muteBtn.muted .soundWave{
+  #muteBtn.muted .speakerWave{
     display:none;
   }
   #muteBtn.muted::after{
-    content:"×";
+    content:"";
     position:absolute;
+    width:24px;
+    height:3px;
+    background:#a64540;
+    border-radius:2px;
+    transform:rotate(-45deg);
     right:5px;
-    top:1px;
-    font:900 18px/1 "Comic Sans MS",cursive;
-    color:#a64540;
-    transform:rotate(-8deg);
+    top:21px;
+  }
+
+
+  html,body,#gameWrap,#hud,#score,#best,#overlay,#panel,#panelTitle,#panelText,
+  button,#playBtn,#muteBtn{
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive !important;
   }
 
 </style>
@@ -211,12 +185,11 @@
   </div>
 
   <button id="muteBtn" aria-label="Toggle sound" title="Sound">
-      <span class="speakerIcon" aria-hidden="true">
-        <span class="speakerBox"></span>
-        <span class="speakerCone"></span>
-        <span class="soundWave wave1"></span>
-        <span class="soundWave wave2"></span>
-      </span>
+      <svg class="speakerSvg" aria-hidden="true" viewBox="0 0 64 64">
+        <path class="speakerBody" d="M10 26 H22 L35 15 V49 L22 38 H10 Z"></path>
+        <path class="speakerWave waveA" d="M41 24 Q48 32 41 40"></path>
+        <path class="speakerWave waveB" d="M46 18 Q57 32 46 46"></path>
+      </svg>
     </button>
 
   <div id="overlay">
@@ -250,8 +223,8 @@
   const muteBtn = document.getElementById("muteBtn");
 
   const DPR = Math.min(window.devicePixelRatio || 1, 1.4);
-  const CSS_W = 520;
-  const CSS_H = 860;
+  const CSS_W = 540;
+  const CSS_H = 780;
 
   canvas.width = Math.round(CSS_W * DPR);
   canvas.height = Math.round(CSS_H * DPR);
@@ -262,7 +235,7 @@
   const TAU = Math.PI * 2;
 
   const FIXED_DT = 1 / 120;
-  const MAX_FRAME_DT = 0.10;
+  const MAX_FRAME_DT = 0.065;
 
   const TYPE = Object.freeze({
     NORMAL: "NORMAL",
@@ -427,7 +400,7 @@
     multiplier: 1,
 
     scrollSpeed: 165,
-    baseScoreRate: 9,
+    baseScoreRate: 5.2,
 
     platforms: [],
     nextPlatformId: 1,
@@ -480,9 +453,9 @@
     radius: 16,
     vy: 0,
 
-    gravity: 980,
-    jumpVelocity: 500,
-    maxFallSpeed: 760,
+    gravity: 1580,
+    jumpVelocity: 635,
+    maxFallSpeed: 860,
 
     targetX: W * 0.5,
     alive: true,
@@ -503,7 +476,7 @@
     pointerId: null,
     lastPointerX: 0,
     keyboardDir: 0,
-    keyboardSpeed: 430
+    keyboardSpeed: 540
   };
 
   // ============================================================
@@ -519,7 +492,9 @@
 
     windSource: null,
     windFilter: null,
+    windHighpass: null,
     windGain: null,
+    windPhase: 0,
 
     init() {
       if (this.ctx) return;
@@ -528,7 +503,7 @@
 
       this.ctx = new AC();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.24;
+      this.master.gain.value = this.muted ? 0 : 0.82;
       this.master.connect(this.ctx.destination);
 
       for (let i = 0; i < 10; i++) {
@@ -552,14 +527,20 @@
       this.windSource.loop = true;
 
       this.windFilter = this.ctx.createBiquadFilter();
-      this.windFilter.type = "bandpass";
-      this.windFilter.frequency.value = 700;
-      this.windFilter.Q.value = 0.7;
+      this.windFilter.type = "lowpass";
+      this.windFilter.frequency.value = 850;
+      this.windFilter.Q.value = 0.18;
 
       this.windGain = this.ctx.createGain();
       this.windGain.gain.value = 0;
 
-      this.windSource.connect(this.windFilter);
+      this.windHighpass = this.ctx.createBiquadFilter();
+      this.windHighpass.type = "highpass";
+      this.windHighpass.frequency.value = 120;
+      this.windHighpass.Q.value = 0.2;
+
+      this.windSource.connect(this.windHighpass);
+      this.windHighpass.connect(this.windFilter);
       this.windFilter.connect(this.windGain);
       this.windGain.connect(this.master);
       this.windSource.start();
@@ -595,22 +576,31 @@
 
     setWind(amount) {
       if (!this.ctx || !this.windGain || !this.windFilter) return;
+
       const now = this.ctx.currentTime;
       const a = clamp(Math.abs(amount), 0, 1);
-      this.windGain.gain.setTargetAtTime(a * 0.075, now, 0.06);
-      this.windFilter.frequency.setTargetAtTime(500 + a * 900, now, 0.08);
+
+      // Gentle breath-like motion instead of harsh static.
+      this.windPhase += 0.11;
+      const flutter = 0.88 + Math.sin(this.windPhase) * 0.12;
+
+      const targetGain = a * 0.085 * flutter;
+      const targetFreq = 700 + a * 520 + Math.sin(this.windPhase * 0.73) * 90;
+
+      this.windGain.gain.setTargetAtTime(targetGain, now, 0.18);
+      this.windFilter.frequency.setTargetAtTime(targetFreq, now, 0.22);
     },
 
-    land() { this.blip(180, 0.055, 0.045); },
+    land() { this.blip(180, 0.055, 0.17); },
     perfect() {
-      this.blip(620, 0.07, 0.065);
-      setTimeout(() => this.blip(820, 0.06, 0.05), 45);
+      this.blip(620, 0.07, 0.20);
+      setTimeout(() => this.blip(820, 0.06, 0.16), 45);
     },
-    break() { this.blip(110, 0.12, 0.07, "square"); },
-    crack() { this.blip(92, 0.18, 0.08, "sawtooth"); },
+    break() { this.blip(110, 0.12, 0.20, "square"); },
+    crack() { this.blip(92, 0.18, 0.22, "sawtooth"); },
     shatter() {
-      this.blip(210, 0.20, 0.075, "square");
-      setTimeout(() => this.blip(470, 0.10, 0.045), 35);
+      this.blip(210, 0.20, 0.18, "square");
+      setTimeout(() => this.blip(470, 0.10, 0.12), 35);
     }
   };
 
@@ -653,7 +643,7 @@
       this.ctx = ctx;
 
       this.musicBus = ctx.createGain();
-      this.musicBus.gain.value = 0.24;
+      this.musicBus.gain.value = 0.62;
       this.musicBus.connect(master);
 
       // Gentle low-pass keeps the 8-bit sound lively without becoming harsh.
@@ -725,7 +715,7 @@
           arpFreq,
           this.nextNoteTime,
           sixteenth * 1.55,
-          0.026,
+          0.034,
           step % 4 === 0
         );
 
@@ -735,7 +725,7 @@
             chord[0] / 2,
             this.nextNoteTime,
             sixteenth * 1.8,
-            0.028
+            0.036
           );
         }
 
@@ -753,7 +743,7 @@
             melodyFreq,
             this.nextNoteTime,
             sixteenth * 1.25,
-            step % 4 === 0 ? 0.034 : 0.025,
+            step % 4 === 0 ? 0.044 : 0.033,
             true
           );
         }
@@ -761,7 +751,7 @@
         // Percussive running pulse.
         if (step % 4 === 0) this.kick(this.nextNoteTime);
         if (step % 8 === 4) this.snare(this.nextNoteTime);
-        if (step % 2 === 1) this.hat(this.nextNoteTime, 0.010);
+        if (step % 2 === 1) this.hat(this.nextNoteTime, 0.016);
 
         this.step++;
         this.nextNoteTime += sixteenth;
@@ -829,7 +819,7 @@
       osc.frequency.setValueAtTime(132, time);
       osc.frequency.exponentialRampToValueAtTime(46, time + 0.075);
 
-      gain.gain.setValueAtTime(0.045, time);
+      gain.gain.setValueAtTime(0.060, time);
       gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.095);
 
       osc.connect(gain);
@@ -849,7 +839,7 @@
       hp.type = "highpass";
       hp.frequency.setValueAtTime(1300, time);
 
-      gain.gain.setValueAtTime(0.021, time);
+      gain.gain.setValueAtTime(0.032, time);
       gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.075);
 
       src.connect(hp);
@@ -1083,30 +1073,22 @@
   }
 
   function chooseReachableGap() {
-    const minGap = 86;
-    const desiredMaxGap = 142;
+    // Faster bounce needs platforms to arrive sooner, but still keep
+    // enough vertical breathing room to avoid crowding.
+    const minGap = 110;
+    const maxGap = 148;
 
-    // Constant visible jump apex in screen coordinates.
-    const screenApexHeight =
-      (PLAYER.jumpVelocity * PLAYER.jumpVelocity) /
-      (2 * PLAYER.gravity);
-
-    // Conservative hard limit. This remains stable at every game speed.
-    const safeMaxGap = Math.min(
-      desiredMaxGap,
-      Math.max(minGap + 8, screenApexHeight * 1.04)
-    );
-
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const gap = minGap + Math.random() * (safeMaxGap - minGap);
+    // Still validate each new platform against the CURRENT scroll speed.
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const gap = minGap + Math.random() * (maxGap - minGap);
       const t = flightTimeToGap(gap, STATE.scrollSpeed);
 
-      if (Number.isFinite(t) && t >= 0.24 && t <= 1.30) {
+      if (Number.isFinite(t) && t >= 0.20 && t <= 1.02) {
         return gap;
       }
     }
 
-    return Math.min(104, safeMaxGap);
+    return 132;
   }
 
   function spawnNextPlatform() {
@@ -1133,14 +1115,14 @@
     STATE.nextPlatformId = 1;
 
     const startW = 120;
-    const startY = H * 0.64;
+    const startY = H * 0.66;
     STATE.platforms.push(
       createPlatform(TYPE.NORMAL, W * 0.5 - startW * 0.5, startY, startW)
     );
 
     // Başlangıçta sadece ekranı dolduracak kadar.
     // Her gap yine ayrı ayrı güncel hesapla oluşturuluyor.
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 9; i++) {
       spawnNextPlatform();
     }
   }
@@ -1152,7 +1134,16 @@
       if (!p.broken && p.y > lowestY) lowestY = p.y;
     }
 
-    if (lowestY < H + 125) {
+    let spawnGuard = 0;
+    while (lowestY < H + 420 && spawnGuard < 5) {
+      spawnNextPlatform();
+      const newest = STATE.platforms[STATE.platforms.length - 1];
+      lowestY = newest ? newest.y : lowestY;
+      spawnGuard++;
+    }
+
+    // Emergency density guard: never let the run feel empty.
+    while (STATE.platforms.length < 7) {
       spawnNextPlatform();
     }
   }
@@ -1187,11 +1178,38 @@
     STATE.winds.length = 0;
   }
 
+  function finishWindEvent() {
+    STATE.windEvent = null;
+    STATE.winds.length = 0;
+
+    // Clear every gameplay/render/audio residue from the wind.
+    PLAYER.windVX = 0;
+    PLAYER.windOffset = 0;
+
+    if (AudioSys.ctx) {
+      AudioSys.setWind(0);
+      if (AudioSys.windGain) {
+        const now = AudioSys.ctx.currentTime;
+        AudioSys.windGain.gain.cancelScheduledValues(now);
+        AudioSys.windGain.gain.setValueAtTime(0, now);
+      }
+    }
+  }
+
   function updateWindZones(dt) {
     maybeSpawnWindZone();
 
     const e = STATE.windEvent;
     if (!e) return;
+
+    // Hard stale-state guard.
+    if (
+      e.phase === "active" &&
+      (!Number.isFinite(e.timer) || e.timer >= e.activeDuration)
+    ) {
+      finishWindEvent();
+      return;
+    }
 
     e.timer += dt;
 
@@ -1199,17 +1217,23 @@
       e.phase = "active";
       e.timer = 0;
     } else if (e.phase === "active" && e.timer >= e.activeDuration) {
-      STATE.windEvent = null;
-
-      // Critical: wind ends cleanly with no leftover drift.
-      PLAYER.windVX = 0;
-      PLAYER.windOffset = 0;
-      AudioSys.setWind(0);
+      finishWindEvent();
+      return;
     }
   }
 
   function applyWindToPlayer(dt) {
     const e = STATE.windEvent;
+
+    if (STATE.mode !== MODE.PLAYING) {
+      if (e) finishWindEvent();
+      else {
+        PLAYER.windVX = 0;
+        PLAYER.windOffset = 0;
+        AudioSys.setWind(0);
+      }
+      return;
+    }
 
     if (!e || e.phase !== "active") {
       PLAYER.windVX = 0;
@@ -1245,6 +1269,8 @@
     STATE.nearMissCooldownUntil = 0;
     STATE.winds.length = 0;
     STATE.windEvent = null;
+    PLAYER.windVX = 0;
+    PLAYER.windOffset = 0;
     STATE.nextWindSpawnScore = 420 + Math.random() * 260;
     STATE.windSerial = 1;
     STATE.deathTimer = 0;
@@ -1269,7 +1295,7 @@
     PLAYER.targetX = W * 0.5;
     PLAYER.prevX = PLAYER.x;
 
-    PLAYER.y = H * 0.34;
+    PLAYER.y = H * 0.32;
     PLAYER.prevY = PLAYER.y;
     PLAYER.vy = 0;
     PLAYER.alive = true;
@@ -1310,7 +1336,7 @@
         if (!AudioSys.ctx || AudioSys.ctx.state !== "running") return;
         MusicSys.start();
         if (!AudioSys.muted) {
-          AudioSys.blip(523.25, 0.07, 0.05);
+          AudioSys.blip(523.25, 0.07, 0.11);
         }
       })
       .catch(() => {});
@@ -1521,176 +1547,247 @@
     }
   }
 
+
+  function sweepPointVsExpandedRect(
+    startX, startY,
+    endX, endY,
+    minX, minY,
+    maxX, maxY
+  ) {
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    let txEntry = -Infinity;
+    let txExit = Infinity;
+    let tyEntry = -Infinity;
+    let tyExit = Infinity;
+
+    if (Math.abs(dx) < 1e-9) {
+      if (startX < minX || startX > maxX) return null;
+    } else {
+      const tx1 = (minX - startX) / dx;
+      const tx2 = (maxX - startX) / dx;
+      txEntry = Math.min(tx1, tx2);
+      txExit = Math.max(tx1, tx2);
+    }
+
+    if (Math.abs(dy) < 1e-9) {
+      if (startY < minY || startY > maxY) return null;
+    } else {
+      const ty1 = (minY - startY) / dy;
+      const ty2 = (maxY - startY) / dy;
+      tyEntry = Math.min(ty1, ty2);
+      tyExit = Math.max(ty1, ty2);
+    }
+
+    const entry = Math.max(txEntry, tyEntry);
+    const exit = Math.min(txExit, tyExit);
+
+    if (entry > exit || exit < 0 || entry > 1) return null;
+    if (entry < 0) return null; // starting overlap handled separately
+
+    let nx = 0, ny = 0;
+
+    if (txEntry > tyEntry) {
+      nx = dx > 0 ? -1 : 1;
+    } else {
+      ny = dy > 0 ? -1 : 1;
+    }
+
+    return { t: entry, nx, ny };
+  }
+
+  function circleRectOverlap(cx, cy, r, p, spikeTop = false) {
+    const top = spikeTop ? p.y - 16 : p.y;
+    const nearestX = clamp(cx, p.x, p.x + p.w);
+    const nearestY = clamp(cy, top, p.y + p.h);
+    const dx = cx - nearestX;
+    const dy = cy - nearestY;
+    return dx * dx + dy * dy < r * r;
+  }
+
   // ============================================================
-  // 9) SWEPT COLLISION — PLATFORM + PLAYER frame sonu konumları
+  // 9) SOLID SWEPT COLLISION — top / sides / underside
   // ============================================================
   function sweptPlatformCollision() {
-    const playerPrevBottom = PLAYER.prevY + PLAYER.radius;
-    const playerNowBottom = PLAYER.y + PLAYER.radius;
+    const radius = PLAYER.radius;
+    const skin = 1.5;
 
-    let hit = null;
-    let earliestT = Infinity;
-    let hitPlayerX = PLAYER.x;
+    let best = null;
 
     for (const p of STATE.platforms) {
       if (p.broken) continue;
 
-      // Critical jump-height fix:
-      // after bouncing from a platform, that SAME platform is ignored
-      // while the ball is still travelling upward. Otherwise the upward
-      // scrolling platform can catch the ball again before its apex.
-      if (
-        p.id === PLAYER.lastBouncePlatformId &&
-        PLAYER.vy < 0
-      ) {
-        continue;
-      }
+      // Ignore only the SAME launch platform while the ball is rising.
+      if (p.id === PLAYER.lastBouncePlatformId && PLAYER.vy < 0) continue;
 
-      const platformPrevTop = p.prevY;
-      const platformNowTop = p.y;
+      // Work in platform-local relative coordinates so moving platforms
+      // are handled by the exact same sweep.
+      const startX = PLAYER.prevX - p.prevX;
+      const startY = PLAYER.prevY - p.prevY;
+      const endX = PLAYER.x - p.x;
+      const endY = PLAYER.y - p.y;
 
-      const relPrev = playerPrevBottom - platformPrevTop;
-      const relNow = playerNowBottom - platformNowTop;
-      const relativeDelta = relNow - relPrev;
+      // Spike triangles extend above the platform body.
+      const hazardTopOffset = p.type === TYPE.SPIKE ? -16 : 0;
 
-      const EPS = 3.0;
+      const hit = sweepPointVsExpandedRect(
+        startX,
+        startY,
+        endX,
+        endY,
+        -radius - skin,
+        hazardTopOffset - radius - skin,
+        p.w + radius + skin,
+        p.h + radius + skin
+      );
 
-      // The moving bottom of the circle must cross the moving top plane.
-      if (relPrev > EPS) continue;
-      if (relNow < -EPS) continue;
-      if (relativeDelta <= 0.00001) continue;
-
-      const t = clamp((-relPrev) / relativeDelta, 0, 1);
-
-      const px = lerp(PLAYER.prevX, PLAYER.x, t);
-      const platformX = lerp(p.prevX, p.x, t);
-
-      // Full circle radius (+ tiny contact tolerance) is used here.
-      // Touching even the very edge/corner of a platform therefore counts.
-      const contactRadius = PLAYER.radius + 2.0;
-      const overlapsX =
-        px + contactRadius >= platformX &&
-        px - contactRadius <= platformX + p.w;
-
-      if (overlapsX && t < earliestT) {
-        earliestT = t;
-        hit = p;
-        hitPlayerX = px;
+      if (hit && (!best || hit.t < best.t)) {
+        best = { p, ...hit };
       }
     }
 
-    // High-speed / corner precision fallback.
-    // If the circle overlaps the platform's top slab at the end of a
-    // 120 Hz step, recover the contact instead of allowing tunnelling.
-    if (!hit) {
-      let bestPenetration = Infinity;
+    if (best) {
+      const p = best.p;
+
+      if (p.type === TYPE.SPIKE) {
+        beginDeath("You hit a spike.");
+        return;
+      }
+
+      // Side impact: the platform is a REAL solid wall.
+      // Stop the ball at the side and reset targetX there so continued
+      // dragging cannot teleport it through the platform on the next step.
+      if (best.nx !== 0) {
+        if (best.nx < 0) {
+          PLAYER.x = p.x - radius - skin;
+        } else {
+          PLAYER.x = p.x + p.w + radius + skin;
+        }
+
+        PLAYER.targetX = PLAYER.x;
+        PLAYER.prevX = PLAYER.x;
+        PLAYER.windVX = 0;
+        PLAYER.windOffset = 0;
+      }
+
+      // Landing on top.
+      if (best.ny < 0) {
+        PLAYER.y = p.y - radius;
+        PLAYER.prevY = PLAYER.y;
+
+        const incomingSpeed = Math.max(0, PLAYER.vy);
+        PLAYER.vy = -PLAYER.jumpVelocity;
+        PLAYER.lastBouncePlatformId = p.id;
+
+        p.impact = clamp(incomingSpeed / 760, 0.18, 0.72);
+        PLAYER.squash = clamp(incomingSpeed / 760, 0.12, 0.48);
+        PLAYER.stretch = 0;
+        STATE.impactShake = Math.max(
+          STATE.impactShake,
+          0.8 + incomingSpeed * 0.0018
+        );
+        STATE.landingFlash = 0.09;
+
+        const dustCount = 5 + Math.floor(clamp(incomingSpeed / 140, 0, 5));
+        for (let i = 0; i < dustCount; i++) {
+          const dir = i % 2 === 0 ? -1 : 1;
+          spawnParticle(
+            PLAYER.x + dir * (3 + (i % 3) * 3),
+            PLAYER.y + PLAYER.radius - 1,
+            dir * (35 + i * 7),
+            -25 - (i % 3) * 12,
+            0.24 + (i % 2) * 0.08,
+            2 + (i % 2)
+          );
+        }
+
+        if (p.type === TYPE.FRAGILE && !p.fragileTriggered) {
+          p.fragileTriggered = true;
+          p.fragileTimer = 0.16;
+          p.breakAnim = 1;
+        }
+
+        const center = p.x + p.w * 0.5;
+        const perfectHalfWidth = clamp(p.w * 0.15, 10, 22);
+
+        if (
+          !p.perfectGranted &&
+          Math.abs(PLAYER.x - center) <= perfectHalfWidth
+        ) {
+          p.perfectGranted = true;
+          STATE.score += 25;
+          STATE.combo += 2;
+
+          burst(PLAYER.x, PLAYER.y + PLAYER.radius, 9);
+          STATE.impactShake = Math.max(STATE.impactShake, 2.2);
+          STATE.speedPulse = 0.12;
+          popup("PERFECT!", PLAYER.x, PLAYER.y - 24, "good");
+          AudioSys.perfect();
+        } else {
+          AudioSys.land();
+        }
+
+        STATE.lastLandingPlatformY = p.y;
+        updateHUD();
+      }
+
+      // Hit underside while rising: stop upward travel and keep the ball below.
+      if (best.ny > 0) {
+        PLAYER.y = p.y + p.h + radius + skin;
+        PLAYER.prevY = PLAYER.y;
+        if (PLAYER.vy < 0) PLAYER.vy = 0;
+      }
+    }
+
+    // FINAL DEPENETRATION PASS:
+    // No matter what happened during the frame, a normal platform is never
+    // allowed to contain the ball. This is the hard guarantee.
+    for (let pass = 0; pass < 3; pass++) {
+      let corrected = false;
 
       for (const p of STATE.platforms) {
         if (p.broken) continue;
 
-        if (
-          p.id === PLAYER.lastBouncePlatformId &&
-          PLAYER.vy < 0
-        ) {
+        if (p.type === TYPE.SPIKE) {
+          if (circleRectOverlap(PLAYER.x, PLAYER.y, radius, p, true)) {
+            beginDeath("You hit a spike.");
+            return;
+          }
           continue;
         }
 
-        const bottom = PLAYER.y + PLAYER.radius;
-        const prevBottom = PLAYER.prevY + PLAYER.radius;
-        const penetration = bottom - p.y;
+        if (!circleRectOverlap(PLAYER.x, PLAYER.y, radius, p, false)) continue;
 
-        const horizontal =
-          PLAYER.x + PLAYER.radius + 2 >= p.x &&
-          PLAYER.x - PLAYER.radius - 2 <= p.x + p.w;
+        const leftPen = Math.abs((PLAYER.x + radius) - p.x);
+        const rightPen = Math.abs((p.x + p.w) - (PLAYER.x - radius));
+        const topPen = Math.abs((PLAYER.y + radius) - p.y);
+        const bottomPen = Math.abs((p.y + p.h) - (PLAYER.y - radius));
 
-        // Relative approach toward the moving top plane.
-        const relativeApproach =
-          (bottom - prevBottom) - (p.y - p.prevY);
+        const minPen = Math.min(leftPen, rightPen, topPen, bottomPen);
 
-        // Must be close to the top surface, not coming from underneath.
-        const wasNotDeepBelow = prevBottom <= p.prevY + 5;
-
-        if (
-          horizontal &&
-          wasNotDeepBelow &&
-          relativeApproach > 0 &&
-          penetration >= -2 &&
-          penetration <= 12 &&
-          penetration < bestPenetration
-        ) {
-          bestPenetration = penetration;
-          hit = p;
-          hitPlayerX = PLAYER.x;
+        if (minPen === leftPen) {
+          PLAYER.x = p.x - radius - skin;
+          PLAYER.targetX = PLAYER.x;
+        } else if (minPen === rightPen) {
+          PLAYER.x = p.x + p.w + radius + skin;
+          PLAYER.targetX = PLAYER.x;
+        } else if (minPen === topPen) {
+          PLAYER.y = p.y - radius;
+          if (PLAYER.vy > 0) PLAYER.vy = -PLAYER.jumpVelocity;
+          PLAYER.lastBouncePlatformId = p.id;
+        } else {
+          PLAYER.y = p.y + p.h + radius + skin;
+          if (PLAYER.vy < 0) PLAYER.vy = 0;
         }
+
+        PLAYER.prevX = PLAYER.x;
+        PLAYER.prevY = PLAYER.y;
+        corrected = true;
       }
+
+      if (!corrected) break;
     }
-
-    if (!hit) return;
-
-    if (hit.type === TYPE.SPIKE) {
-      beginDeath("You hit a spike.");
-      return;
-    }
-
-    // Hard snap to the exact top surface: no visual penetration.
-    PLAYER.y = hit.y - PLAYER.radius;
-
-    const incomingSpeed = Math.max(0, PLAYER.vy);
-
-    // Screen-space jump velocity is CONSTANT.
-    // Scroll speed never changes the launch velocity, so the visible
-    // bounce height remains the same from early game to max speed.
-    PLAYER.vy = -PLAYER.jumpVelocity;
-    PLAYER.lastBouncePlatformId = hit.id;
-
-    // Professional impact feedback: visual only.
-    hit.impact = clamp(incomingSpeed / 760, 0.18, 0.72);
-    PLAYER.squash = clamp(incomingSpeed / 760, 0.12, 0.48);
-    PLAYER.stretch = 0;
-    STATE.impactShake = Math.max(STATE.impactShake, 0.8 + incomingSpeed * 0.0018);
-    STATE.landingFlash = 0.09;
-
-    const dustCount = 5 + Math.floor(clamp(incomingSpeed / 140, 0, 5));
-    for (let i = 0; i < dustCount; i++) {
-      const dir = i % 2 === 0 ? -1 : 1;
-      spawnParticle(
-        PLAYER.x + dir * (3 + (i % 3) * 3),
-        PLAYER.y + PLAYER.radius - 1,
-        dir * (35 + i * 7),
-        -25 - (i % 3) * 12,
-        0.24 + (i % 2) * 0.08,
-        2 + (i % 2)
-      );
-    }
-
-    if (hit.type === TYPE.FRAGILE && !hit.fragileTriggered) {
-      hit.fragileTriggered = true;
-      hit.fragileTimer = 0.16;
-      hit.breakAnim = 1;
-    }
-
-    const center = hit.x + hit.w * 0.5;
-    const perfectHalfWidth = clamp(hit.w * 0.15, 10, 22);
-
-    if (
-      !hit.perfectGranted &&
-      Math.abs(hitPlayerX - center) <= perfectHalfWidth
-    ) {
-      hit.perfectGranted = true;
-      STATE.score += 25;
-      STATE.combo += 2;
-
-      burst(PLAYER.x, PLAYER.y + PLAYER.radius, 9);
-      STATE.impactShake = Math.max(STATE.impactShake, 2.2);
-      STATE.speedPulse = 0.12;
-      popup("PERFECT!", PLAYER.x, PLAYER.y - 24, "good");
-      AudioSys.perfect();
-    } else {
-      AudioSys.land();
-    }
-
-    STATE.lastLandingPlatformY = hit.y;
-    updateHUD();
   }
 
   // ============================================================
@@ -1737,10 +1834,15 @@
   function updateScore(dt) {
     STATE.multiplier = comboMultiplier();
 
+    // Score starts calm and becomes faster as the game itself speeds up.
+    // This keeps the first part readable instead of racing through numbers.
+    const scoreSpeed01 = clamp((STATE.scrollSpeed - 165) / (292 - 165), 0, 1);
+    const scoreRamp = Math.pow(scoreSpeed01, 1.35);
+    const scorePerSecond = lerp(5.2, 19.5, scoreRamp);
+
     STATE.score +=
-      (STATE.scrollSpeed / 100) *
+      scorePerSecond *
       dt *
-      STATE.baseScoreRate *
       STATE.multiplier;
 
     STATE.runDistance += STATE.scrollSpeed * dt;
@@ -1982,17 +2084,6 @@
         ctx.stroke();
       }
 
-      if (p.type === TYPE.MOVING) {
-        ctx.fillStyle = "#263b46";
-        ctx.font = "bold 12px Comic Sans MS, cursive";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          p.moveDir > 0 ? "→ →" : "← ←",
-          p.x + p.w * 0.5,
-          p.y + p.impact * 3.5 + p.h * 0.5 + 0.5
-        );
-      }
     }
 
     // Broken fragile debris
@@ -2022,28 +2113,56 @@
       ctx.fill();
       ctx.stroke();
 
-      const count = Math.max(2, Math.floor(p.w / 22));
+      const count = Math.max(3, Math.floor(p.w / 24));
       const sw = p.w / count;
 
+      // Cleaner spike look: neat triangular teeth on a small base strip.
+      const spikeBaseH = 4;
+      const spikeH = 14;
+
+      // Base strip
+      ctx.fillStyle = "#8d9aa0";
+      ctx.strokeStyle = "#2f3833";
+      ctx.lineWidth = 2;
+      roundRectPath(p.x, p.y - spikeBaseH, p.w, spikeBaseH + p.h, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Teeth
       ctx.fillStyle = "#d85650";
       ctx.strokeStyle = "#2f3833";
+      ctx.lineJoin = "round";
 
-      const spikeInset = 1.6;
+      const spikeInset = 2.5;
       for (let i = 0; i < count; i++) {
-        let left = p.x + i * sw;
-        let right = (i === count - 1) ? (p.x + p.w) : (p.x + (i + 1) * sw);
+        let left = p.x + i * sw + 1;
+        let right = (i === count - 1 ? p.x + p.w : p.x + (i + 1) * sw) - 1;
 
         if (i === 0) left += spikeInset;
         if (i === count - 1) right -= spikeInset;
 
         const mid = (left + right) * 0.5;
+        const tipY = p.y - spikeH;
 
         ctx.beginPath();
         ctx.moveTo(left, p.y);
-        ctx.lineTo(mid, p.y - 16);
-        ctx.lineTo(right, p.y);
+        ctx.quadraticCurveTo(left + (mid - left) * 0.35, p.y - 2, mid, tipY);
+        ctx.quadraticCurveTo(right - (right - mid) * 0.35, p.y - 2, right, p.y);
         ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+      }
+
+      // Tiny highlight for a cleaner, less "paint" look
+      ctx.strokeStyle = "rgba(255,255,255,0.28)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < count; i++) {
+        let left = p.x + i * sw + 4;
+        let right = (i === count - 1 ? p.x + p.w : p.x + (i + 1) * sw) - 4;
+        const mid = (left + right) * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(left, p.y - 2);
+        ctx.lineTo(mid, p.y - spikeH + 4);
         ctx.stroke();
       }
     }
@@ -2053,6 +2172,16 @@
   function drawWindZones() {
     const e = STATE.windEvent;
     if (!e) return;
+
+    // Render guard: a finished/stale wind can never leave the blue overlay
+    // stuck on screen even if a frame missed the normal cleanup.
+    if (
+      e.phase === "active" &&
+      (!Number.isFinite(e.timer) || e.timer >= e.activeDuration)
+    ) {
+      finishWindEvent();
+      return;
+    }
 
     ctx.save();
 
@@ -2086,10 +2215,10 @@
       ctx.fillStyle = "#303631";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = "900 34px Comic Sans MS, cursive";
+      ctx.font = "900 34px Comic Sans MS, Comic Sans, Chalkboard SE, Marker Felt, Segoe Print, cursive";
       ctx.fillText("!", signX, signY + 6);
 
-      ctx.font = "900 22px Comic Sans MS, cursive";
+      ctx.font = "900 22px Comic Sans MS, Comic Sans, Chalkboard SE, Marker Felt, Segoe Print, cursive";
       ctx.fillStyle = "#b33f3a";
       ctx.fillText(
         e.dir > 0 ? "WIND  →" : "←  WIND",
@@ -2162,7 +2291,7 @@
     ctx.fillStyle = "#b74743";
     ctx.textAlign = dir > 0 ? "left" : "right";
     ctx.textBaseline = "middle";
-    ctx.font = "900 16px Comic Sans MS, cursive";
+    ctx.font = "900 16px Comic Sans MS, Comic Sans, Chalkboard SE, Marker Felt, Segoe Print, cursive";
     if (dir > 0) ctx.fillText("WIND →", 14, H * 0.16);
     else ctx.fillText("← WIND", W - 14, H * 0.16);
 
@@ -2394,7 +2523,7 @@
       if (!p.active) continue;
 
       ctx.globalAlpha = p.life / p.maxLife;
-      ctx.font = "900 10px Comic Sans MS, cursive";
+      ctx.font = "900 10px Comic Sans MS, Comic Sans, Chalkboard SE, Marker Felt, Segoe Print, cursive";
       ctx.fillStyle =
         p.kind === "good" ? "#356b50" :
         p.kind === "bad" ? "#a64642" :
@@ -2446,10 +2575,10 @@
     ctx.lineTo(W * 0.5 + 66, y + 10);
     ctx.stroke();
 
-    ctx.font = "900 20px Comic Sans MS, cursive";
+    ctx.font = "900 20px Comic Sans MS, Comic Sans, Chalkboard SE, Marker Felt, Segoe Print, cursive";
     ctx.fillText("DRAG", W * 0.5, y + 38);
 
-    ctx.font = "900 12px Comic Sans MS, cursive";
+    ctx.font = "900 12px Comic Sans MS, Comic Sans, Chalkboard SE, Marker Felt, Segoe Print, cursive";
     ctx.globalAlpha = 0.72;
     ctx.fillText("TAP TO START", W * 0.5, y + 65);
 
@@ -2533,7 +2662,7 @@
     STATE.accumulator += frameDt;
 
     let safety = 0;
-    while (STATE.accumulator >= FIXED_DT && safety < 24) {
+    while (STATE.accumulator >= FIXED_DT && safety < 18) {
       fixedUpdate(FIXED_DT);
       STATE.accumulator -= FIXED_DT;
       safety++;
@@ -2587,9 +2716,11 @@
     const deltaX = currentX - INPUT.lastPointerX;
     INPUT.lastPointerX = currentX;
 
-    // Continue from the ball's current/last dragged position.
+    // Faster drag response while preserving relative-drag behavior:
+    // touching again never teleports the ball.
+    const DRAG_SENSITIVITY = 1.42;
     PLAYER.targetX = clamp(
-      PLAYER.targetX + deltaX,
+      PLAYER.targetX + deltaX * DRAG_SENSITIVITY,
       PLAYER.radius,
       W - PLAYER.radius
     );
@@ -2665,7 +2796,7 @@
 
     if (AudioSys.master && AudioSys.ctx) {
       AudioSys.master.gain.setTargetAtTime(
-        AudioSys.muted ? 0 : 0.24,
+        AudioSys.muted ? 0 : 0.82,
         AudioSys.ctx.currentTime,
         0.04
       );
