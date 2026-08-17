@@ -18,8 +18,8 @@
   body{display:grid;place-items:center}
   #gameWrap{
     position:relative;
-    width:min(100vw,540px);
-    height:min(100vh,780px);
+    width:min(100vw,600px);
+    height:min(100vh,800px);
   }
   canvas{
     display:block;
@@ -99,7 +99,7 @@
   #panel p{
     color:#65716b;
     line-height:1.45;
-    margin-bottom:18px;
+    margin-bottom:12px;
   }
   button{
     width:100%;
@@ -173,6 +173,21 @@
     font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive !important;
   }
 
+
+  #reviveCountdown{
+    margin:4px 0 12px;
+    font-size:32px;
+    font-weight:900;
+    line-height:1;
+    color:#c84d48;
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Marker Felt","Segoe Print",cursive !important;
+  }
+  #reviveBtn{
+    margin-bottom:10px;
+    background:#ef5c54;
+    color:#fffaf0;
+  }
+
 </style>
 </head>
 <body>
@@ -195,10 +210,9 @@
   <div id="overlay">
     <div id="panel">
       <h1 id="panelTitle">PAPER FALL</h1>
-      <p id="panelText">
-        Drag left and right. The ball follows your finger instantly.<br>
-        Land clean, dodge spikes, survive the fall.
-      </p>
+      <p id="panelText"></p>
+      <div id="reviveCountdown" style="display:none"></div>
+      <button id="reviveBtn" style="display:none">WATCH AD & CONTINUE</button>
       <button id="playBtn">PLAY</button>
     </div>
   </div>
@@ -220,11 +234,13 @@
   const panelTitle = document.getElementById("panelTitle");
   const panelText = document.getElementById("panelText");
   const playBtn = document.getElementById("playBtn");
+  const reviveBtn = document.getElementById("reviveBtn");
+  const reviveCountdown = document.getElementById("reviveCountdown");
   const muteBtn = document.getElementById("muteBtn");
 
   const DPR = Math.min(window.devicePixelRatio || 1, 1.4);
-  const CSS_W = 540;
-  const CSS_H = 780;
+  const CSS_W = 600;
+  const CSS_H = 800;
 
   canvas.width = Math.round(CSS_W * DPR);
   canvas.height = Math.round(CSS_H * DPR);
@@ -249,6 +265,8 @@
     TUTORIAL: "TUTORIAL",
     PLAYING: "PLAYING",
     DEATH: "DEATH",
+    REVIVE: "REVIVE",
+    REVIVE_COUNTDOWN: "REVIVE_COUNTDOWN",
     GAMEOVER: "GAMEOVER"
   });
 
@@ -399,7 +417,7 @@
     combo: 0,
     multiplier: 1,
 
-    scrollSpeed: 165,
+    scrollSpeed: 205,
     baseScoreRate: 5.2,
 
     platforms: [],
@@ -429,6 +447,14 @@
     deathPhase: 0,
     deathReason: "",
     deathPieces: [],
+    reviveUsed: false,
+    reviveTimer: 0,
+    reviveDuration: 5,
+    reviveReadyTimer: 0,
+    invincibleTimer: 0,
+
+    // Wind visual is independent from event state and is hard-reset at end.
+    windVisual: 0,
 
     // Professional feedback / presentation
     impactShake: 0,
@@ -699,7 +725,7 @@
 
       // Quick, restless retro-RPG pulse.
       // Tempo responds slightly to the run but stops increasing once gameplay speed caps.
-      const speedRatio = clamp((STATE.scrollSpeed - 165) / (292 - 165), 0, 1);
+      const speedRatio = clamp((STATE.scrollSpeed - 205) / (292 - 205), 0, 1);
       const bpm = 148 + speedRatio * 16;
       const sixteenth = 60 / bpm / 4;
 
@@ -1122,7 +1148,7 @@
 
     // Başlangıçta sadece ekranı dolduracak kadar.
     // Her gap yine ayrı ayrı güncel hesapla oluşturuluyor.
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 14; i++) {
       spawnNextPlatform();
     }
   }
@@ -1164,12 +1190,18 @@
 
     const dir = Math.random() < 0.5 ? -1 : 1;
 
+    const warningDuration = 1.65;
+    const activeDuration = 3.5 + Math.random() * 0.5;
+
     STATE.windEvent = {
       id: STATE.windSerial++,
       phase: "warning",
       timer: 0,
-      warningDuration: 1.65,
-      activeDuration: 3.5 + Math.random() * 0.5,
+      warningDuration,
+      activeDuration,
+      totalDuration: warningDuration + activeDuration,
+      startedAt: STATE.time,
+      endsAt: STATE.time + warningDuration + activeDuration + 0.08,
       dir,
       strength: 520 + Math.random() * 110
     };
@@ -1181,6 +1213,7 @@
   function finishWindEvent() {
     STATE.windEvent = null;
     STATE.winds.length = 0;
+    STATE.windVisual = 0;
 
     // Clear every gameplay/render/audio residue from the wind.
     PLAYER.windVX = 0;
@@ -1188,10 +1221,16 @@
 
     if (AudioSys.ctx) {
       AudioSys.setWind(0);
+
       if (AudioSys.windGain) {
         const now = AudioSys.ctx.currentTime;
         AudioSys.windGain.gain.cancelScheduledValues(now);
         AudioSys.windGain.gain.setValueAtTime(0, now);
+      }
+
+      if (AudioSys.windFilter) {
+        const now = AudioSys.ctx.currentTime;
+        AudioSys.windFilter.frequency.cancelScheduledValues(now);
       }
     }
   }
@@ -1204,8 +1243,12 @@
 
     // Hard stale-state guard.
     if (
-      e.phase === "active" &&
-      (!Number.isFinite(e.timer) || e.timer >= e.activeDuration)
+      !Number.isFinite(e.timer) ||
+      !Number.isFinite(e.startedAt) ||
+      !Number.isFinite(e.endsAt) ||
+      STATE.time >= e.endsAt ||
+      (e.phase !== "warning" && e.phase !== "active") ||
+      (e.phase === "active" && e.timer >= e.activeDuration)
     ) {
       finishWindEvent();
       return;
@@ -1213,9 +1256,15 @@
 
     e.timer += dt;
 
+    if ((STATE.time - e.startedAt) >= e.totalDuration + 0.08) {
+      finishWindEvent();
+      return;
+    }
+
     if (e.phase === "warning" && e.timer >= e.warningDuration) {
       e.phase = "active";
       e.timer = 0;
+      STATE.windVisual = 1;
     } else if (e.phase === "active" && e.timer >= e.activeDuration) {
       finishWindEvent();
       return;
@@ -1236,11 +1285,14 @@
     }
 
     if (!e || e.phase !== "active") {
+      STATE.windVisual = 0;
       PLAYER.windVX = 0;
       PLAYER.windOffset = 0;
       AudioSys.setWind(0);
       return;
     }
+
+    STATE.windVisual = 1;
 
     // Full-screen wind: constant direction for the entire event.
     // A tiny pulse changes strength only; direction can never flip.
@@ -1264,7 +1316,7 @@
     STATE.score = 0;
     STATE.combo = 0;
     STATE.multiplier = 1;
-    STATE.scrollSpeed = 165;
+    STATE.scrollSpeed = 205;
     STATE.lastLandingPlatformY = null;
     STATE.nearMissCooldownUntil = 0;
     STATE.winds.length = 0;
@@ -1277,6 +1329,11 @@
     STATE.deathPhase = 0;
     STATE.deathReason = "";
     STATE.deathPieces.length = 0;
+    STATE.reviveUsed = false;
+    STATE.reviveTimer = 0;
+    STATE.reviveReadyTimer = 0;
+    STATE.invincibleTimer = 0;
+    STATE.windVisual = 0;
     STATE.impactShake = 0;
     STATE.speedPulse = 0;
     STATE.landingFlash = 0;
@@ -1305,6 +1362,7 @@
     PLAYER.stretch = 0;
     PLAYER.lastBouncePlatformId = null;
 
+    finishWindEvent();
     buildInitialPlatforms();
     updateHUD();
   }
@@ -1316,6 +1374,9 @@
     STATE.mode = MODE.TUTORIAL;
     PLAYER.targetX = W * 0.5;
     overlay.style.display = "none";
+    reviveCountdown.style.display = "none";
+    reviveBtn.style.display = "none";
+    playBtn.style.display = "block";
     document.getElementById("hud").style.display = "none";
     muteBtn.style.display = "none";
 
@@ -1344,6 +1405,7 @@
 
   function beginDeath(reason) {
     if (STATE.mode !== MODE.PLAYING) return;
+    if (STATE.invincibleTimer > 0) return;
 
     STATE.mode = MODE.DEATH;
     STATE.deathTimer = 0;
@@ -1353,7 +1415,7 @@
     PLAYER.alive = false;
     PLAYER.vy = 0;
     PLAYER.windVX = 0;
-    AudioSys.setWind(0);
+    finishWindEvent();
     AudioSys.crack();
 
     resetCombo();
@@ -1415,19 +1477,147 @@
     }
 
     if (STATE.deathTimer >= 1.15) {
+      if (!STATE.reviveUsed) showRevivePrompt();
+      else showGameOver();
+    }
+  }
+
+  function showRevivePrompt() {
+    finishWindEvent();
+    MusicSys.stop();
+
+    STATE.mode = MODE.REVIVE;
+    STATE.reviveTimer = STATE.reviveDuration;
+
+    document.getElementById("hud").style.display = "none";
+    muteBtn.style.display = "none";
+
+    panelTitle.textContent = "CONTINUE?";
+    panelText.innerHTML =
+      `${STATE.deathReason}<br><br>` +
+      `Score: <b>${Math.floor(STATE.score)}</b>`;
+
+    reviveCountdown.style.display = "block";
+    reviveCountdown.textContent = "5";
+    reviveBtn.style.display = "block";
+    playBtn.style.display = "none";
+    overlay.style.display = "grid";
+  }
+
+  function updateRevive(dt) {
+    finishWindEvent();
+
+    STATE.reviveTimer = Math.max(0, STATE.reviveTimer - dt);
+    reviveCountdown.textContent = String(Math.max(0, Math.ceil(STATE.reviveTimer)));
+
+    updateParticles(dt);
+    updatePopups(dt);
+
+    if (STATE.reviveTimer <= 0) {
       showGameOver();
+    }
+  }
+
+  function performRevive() {
+    if (STATE.mode !== MODE.REVIVE || STATE.reviveUsed) return;
+
+    STATE.reviveUsed = true;
+    STATE.reviveTimer = 0;
+    STATE.deathPieces.length = 0;
+    finishWindEvent();
+
+    // Remove hazards close to the revive area so the restart is genuinely safe.
+    const safeY = H * 0.68;
+    STATE.platforms = STATE.platforms.filter(p =>
+      p.y < safeY - 150 || p.y > safeY + 150
+    );
+
+    const safeW = 150;
+    const safeX = clamp(W * 0.5 - safeW * 0.5, 18, W - safeW - 18);
+    const safePlatform = createPlatform(TYPE.NORMAL, safeX, safeY, safeW);
+    safePlatform.perfectGranted = true;
+    STATE.platforms.push(safePlatform);
+
+    PLAYER.x = W * 0.5;
+    PLAYER.prevX = PLAYER.x;
+    PLAYER.targetX = PLAYER.x;
+    PLAYER.y = safeY - PLAYER.radius - 70;
+    PLAYER.prevY = PLAYER.y;
+    PLAYER.vy = 0;
+    PLAYER.alive = true;
+    PLAYER.lastBouncePlatformId = null;
+    PLAYER.windVX = 0;
+    PLAYER.windOffset = 0;
+
+    STATE.invincibleTimer = 1.5;
+    STATE.reviveReadyTimer = 3;
+    STATE.mode = MODE.REVIVE_COUNTDOWN;
+
+    // Keep scene visible and frozen while player prepares.
+    overlay.style.display = "grid";
+    panelTitle.textContent = "GET READY";
+    panelText.innerHTML = "";
+    reviveCountdown.style.display = "block";
+    reviveCountdown.textContent = "3";
+    reviveBtn.style.display = "none";
+    playBtn.style.display = "none";
+    document.getElementById("hud").style.display = "none";
+
+    AudioSys.resume().catch(() => {});
+  }
+
+  function finishReviveCountdown() {
+    if (STATE.mode !== MODE.REVIVE_COUNTDOWN) return;
+
+    STATE.mode = MODE.PLAYING;
+    PLAYER.vy = 70;
+    PLAYER.prevY = PLAYER.y;
+
+    overlay.style.display = "none";
+    reviveCountdown.style.display = "none";
+    reviveBtn.style.display = "none";
+    playBtn.style.display = "block";
+    document.getElementById("hud").style.display = "flex";
+
+    AudioSys.resume()
+      .then(() => {
+        if (AudioSys.ctx && AudioSys.ctx.state === "running") {
+          MusicSys.start();
+          if (!AudioSys.muted) AudioSys.blip(659.25, 0.09, 0.14);
+        }
+      })
+      .catch(() => {});
+  }
+
+  function updateReviveCountdown(dt) {
+    finishWindEvent();
+
+    STATE.reviveReadyTimer = Math.max(0, STATE.reviveReadyTimer - dt);
+    reviveCountdown.textContent = String(
+      Math.max(1, Math.ceil(STATE.reviveReadyTimer))
+    );
+
+    updateParticles(dt);
+    updatePopups(dt);
+
+    if (STATE.reviveReadyTimer <= 0) {
+      finishReviveCountdown();
     }
   }
 
   function showGameOver() {
     STATE.mode = MODE.GAMEOVER;
-    AudioSys.setWind(0);
+    finishWindEvent();
     MusicSys.stop();
     document.getElementById("hud").style.display = "none";
     muteBtn.style.display = "grid";
 
     STATE.best = Math.max(STATE.best, STATE.score);
     localStorage.setItem("paperFallBest", String(Math.floor(STATE.best)));
+
+    reviveCountdown.style.display = "none";
+    reviveBtn.style.display = "none";
+    playBtn.style.display = "block";
 
     panelTitle.textContent = "RUN OVER";
     panelText.innerHTML =
@@ -1597,6 +1787,20 @@
     return { t: entry, nx, ny };
   }
 
+  function laserBeamOverlap(cx, cy, r, p) {
+    const beamPad = 8;
+    const beamX = p.x + beamPad;
+    const beamW = Math.max(14, p.w - beamPad * 2);
+    const beamY = p.y - 7;
+    const beamH = 9;
+
+    const nearestX = clamp(cx, beamX, beamX + beamW);
+    const nearestY = clamp(cy, beamY, beamY + beamH);
+    const dx = cx - nearestX;
+    const dy = cy - nearestY;
+    return dx * dx + dy * dy < r * r;
+  }
+
   function circleRectOverlap(cx, cy, r, p, spikeTop = false) {
     const top = spikeTop ? p.y - 16 : p.y;
     const nearestX = clamp(cx, p.x, p.x + p.w);
@@ -1628,8 +1832,8 @@
       const endX = PLAYER.x - p.x;
       const endY = PLAYER.y - p.y;
 
-      // Spike triangles extend above the platform body.
-      const hazardTopOffset = p.type === TYPE.SPIKE ? -16 : 0;
+      // Laser platforms are solid bodies; only the top beam is deadly.
+      const hazardTopOffset = 0;
 
       const hit = sweepPointVsExpandedRect(
         startX,
@@ -1650,10 +1854,7 @@
     if (best) {
       const p = best.p;
 
-      if (p.type === TYPE.SPIKE) {
-        beginDeath("You hit a spike.");
-        return;
-      }
+      // Laser platforms only kill on the top beam, not from their sides/body.
 
       // Side impact: the platform is a REAL solid wall.
       // Stop the ball at the side and reset targetX there so continued
@@ -1673,6 +1874,11 @@
 
       // Landing on top.
       if (best.ny < 0) {
+        if (p.type === TYPE.SPIKE) {
+          beginDeath("You touched a laser.");
+          return;
+        }
+
         PLAYER.y = p.y - radius;
         PLAYER.prevY = PLAYER.y;
 
@@ -1749,12 +1955,9 @@
       for (const p of STATE.platforms) {
         if (p.broken) continue;
 
-        if (p.type === TYPE.SPIKE) {
-          if (circleRectOverlap(PLAYER.x, PLAYER.y, radius, p, true)) {
-            beginDeath("You hit a spike.");
-            return;
-          }
-          continue;
+        if (p.type === TYPE.SPIKE && laserBeamOverlap(PLAYER.x, PLAYER.y, radius, p)) {
+          beginDeath("You touched a laser.");
+          return;
         }
 
         if (!circleRectOverlap(PLAYER.x, PLAYER.y, radius, p, false)) continue;
@@ -1836,7 +2039,7 @@
 
     // Score starts calm and becomes faster as the game itself speeds up.
     // This keeps the first part readable instead of racing through numbers.
-    const scoreSpeed01 = clamp((STATE.scrollSpeed - 165) / (292 - 165), 0, 1);
+    const scoreSpeed01 = clamp((STATE.scrollSpeed - 205) / (292 - 205), 0, 1);
     const scoreRamp = Math.pow(scoreSpeed01, 1.35);
     const scorePerSecond = lerp(5.2, 19.5, scoreRamp);
 
@@ -1849,7 +2052,7 @@
 
     // Smooth acceleration, then a permanent fixed-speed plateau.
     // Once the player reaches the plateau, the run never gets faster.
-    const START_SPEED = 165;
+    const START_SPEED = 205;
     const MAX_SPEED = 292;
     const PLATEAU_SCORE = 2600;
 
@@ -1893,6 +2096,8 @@
   // ============================================================
   function fixedUpdate(dt) {
     if (STATE.mode === MODE.TUTORIAL) {
+      if (STATE.windEvent) finishWindEvent();
+
       STATE.time += dt;
       STATE.tutorialTime += dt;
 
@@ -1912,17 +2117,32 @@
     }
 
     if (STATE.mode === MODE.DEATH) {
+      if (STATE.windEvent || STATE.windVisual) finishWindEvent();
       updateDeath(dt);
       return;
     }
 
+    if (STATE.mode === MODE.REVIVE) {
+      updateRevive(dt);
+      return;
+    }
+
+    if (STATE.mode === MODE.REVIVE_COUNTDOWN) {
+      updateReviveCountdown(dt);
+      return;
+    }
+
     if (STATE.mode !== MODE.PLAYING) {
+      if (STATE.windEvent) finishWindEvent();
       updateParticles(dt);
       updatePopups(dt);
       return;
     }
 
     STATE.time += dt;
+    if (STATE.invincibleTimer > 0) {
+      STATE.invincibleTimer = Math.max(0, STATE.invincibleTimer - dt);
+    }
     updateTheme(dt);
 
     // Critical order:
@@ -2000,7 +2220,7 @@
 
     // Speed streaks
     if (STATE.mode === MODE.PLAYING) {
-      const speed01 = clamp((STATE.scrollSpeed - 165) / 140, 0, 1);
+      const speed01 = clamp((STATE.scrollSpeed - 205) / 87, 0, 1);
       const pulse = STATE.speedPulse > 0 ? 0.12 : 0;
 
       ctx.strokeStyle = `rgba(${lineRgb.r},${lineRgb.g},${lineRgb.b},${0.025 + speed01 * 0.055 + pulse * 0.5})`;
@@ -2104,67 +2324,78 @@
       }
     }
 
-    // Spikes separate path.
+    // Laser platforms: solid base + neon beam + glow particles.
     for (const p of STATE.platforms) {
       if (p.type !== TYPE.SPIKE || p.broken) continue;
 
-      ctx.fillStyle = "#8d9692";
-      roundRectPath(p.x, p.y, p.w, p.h, 5);
-      ctx.fill();
-      ctx.stroke();
-
-      const count = Math.max(3, Math.floor(p.w / 24));
-      const sw = p.w / count;
-
-      // Cleaner spike look: neat triangular teeth on a small base strip.
-      const spikeBaseH = 4;
-      const spikeH = 14;
-
-      // Base strip
-      ctx.fillStyle = "#8d9aa0";
+      // Base
+      ctx.fillStyle = "#6d7378";
       ctx.strokeStyle = "#2f3833";
       ctx.lineWidth = 2;
-      roundRectPath(p.x, p.y - spikeBaseH, p.w, spikeBaseH + p.h, 6);
+      roundRectPath(p.x, p.y, p.w, p.h, 6);
       ctx.fill();
       ctx.stroke();
 
-      // Teeth
-      ctx.fillStyle = "#d85650";
-      ctx.strokeStyle = "#2f3833";
-      ctx.lineJoin = "round";
+      // Emitter caps
+      const emitterW = 11;
+      const emitterH = 8;
+      ctx.fillStyle = "#41484d";
+      roundRectPath(p.x + 5, p.y - 5, emitterW, emitterH, 3);
+      ctx.fill();
+      roundRectPath(p.x + p.w - emitterW - 5, p.y - 5, emitterW, emitterH, 3);
+      ctx.fill();
 
-      const spikeInset = 2.5;
-      for (let i = 0; i < count; i++) {
-        let left = p.x + i * sw + 1;
-        let right = (i === count - 1 ? p.x + p.w : p.x + (i + 1) * sw) - 1;
+      // Neon beam with layered glow
+      const beamX = p.x + 14;
+      const beamW = Math.max(14, p.w - 28);
+      const beamY = p.y - 3.5;
 
-        if (i === 0) left += spikeInset;
-        if (i === count - 1) right -= spikeInset;
+      const pulse = 0.72 + 0.28 * Math.sin(STATE.time * 12 + p.x * 0.05);
 
-        const mid = (left + right) * 0.5;
-        const tipY = p.y - spikeH;
+      ctx.save();
+      ctx.lineCap = "round";
 
+      // Outer glow
+      ctx.globalAlpha = 0.18 + pulse * 0.10;
+      ctx.strokeStyle = "#ff3a46";
+      ctx.lineWidth = 13;
+      ctx.beginPath();
+      ctx.moveTo(beamX, beamY);
+      ctx.lineTo(beamX + beamW, beamY);
+      ctx.stroke();
+
+      // Mid glow
+      ctx.globalAlpha = 0.38 + pulse * 0.14;
+      ctx.strokeStyle = "#ff4b55";
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(beamX, beamY);
+      ctx.lineTo(beamX + beamW, beamY);
+      ctx.stroke();
+
+      // Core beam
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#ffd6d8";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(beamX, beamY);
+      ctx.lineTo(beamX + beamW, beamY);
+      ctx.stroke();
+
+      // Spark / heat particles
+      for (let i = 0; i < 5; i++) {
+        const tx = beamX + ((i * 37 + p.x * 0.3 + STATE.time * 75) % beamW);
+        const ty = beamY - 2 - ((i * 11 + STATE.time * 26) % 10);
+        const s = 1.7 + (i % 2) * 0.8;
+
+        ctx.globalAlpha = 0.35 + (i % 3) * 0.12;
+        ctx.fillStyle = i % 2 === 0 ? "#ff6c73" : "#ffd7da";
         ctx.beginPath();
-        ctx.moveTo(left, p.y);
-        ctx.quadraticCurveTo(left + (mid - left) * 0.35, p.y - 2, mid, tipY);
-        ctx.quadraticCurveTo(right - (right - mid) * 0.35, p.y - 2, right, p.y);
-        ctx.closePath();
+        ctx.arc(tx, ty, s, 0, TAU);
         ctx.fill();
-        ctx.stroke();
       }
 
-      // Tiny highlight for a cleaner, less "paint" look
-      ctx.strokeStyle = "rgba(255,255,255,0.28)";
-      ctx.lineWidth = 1;
-      for (let i = 0; i < count; i++) {
-        let left = p.x + i * sw + 4;
-        let right = (i === count - 1 ? p.x + p.w : p.x + (i + 1) * sw) - 4;
-        const mid = (left + right) * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(left, p.y - 2);
-        ctx.lineTo(mid, p.y - spikeH + 4);
-        ctx.stroke();
-      }
+      ctx.restore();
     }
   }
 
@@ -2172,12 +2403,18 @@
   function drawWindZones() {
     const e = STATE.windEvent;
     if (!e) return;
+    if (STATE.mode !== MODE.PLAYING) {
+      finishWindEvent();
+      return;
+    }
 
     // Render guard: a finished/stale wind can never leave the blue overlay
     // stuck on screen even if a frame missed the normal cleanup.
     if (
-      e.phase === "active" &&
-      (!Number.isFinite(e.timer) || e.timer >= e.activeDuration)
+      !Number.isFinite(e.timer) ||
+      !Number.isFinite(e.endsAt) ||
+      STATE.time >= e.endsAt ||
+      (e.phase === "active" && e.timer >= e.activeDuration)
     ) {
       finishWindEvent();
       return;
@@ -2231,10 +2468,15 @@
     }
 
     // Active phase covers the WHOLE SCREEN for ~3.5–4 seconds.
+    if (STATE.windVisual <= 0) {
+      ctx.restore();
+      return;
+    }
+
     const dir = e.dir;
     const t = STATE.time;
 
-    ctx.globalAlpha = 0.07;
+    ctx.globalAlpha = 0.045 * STATE.windVisual;
     ctx.fillStyle = "#718b96";
     ctx.fillRect(0, 0, W, H);
 
@@ -2243,8 +2485,8 @@
     ctx.lineCap = "round";
 
     // Dense full-screen speed streaks.
-    for (let row = 0; row < 15; row++) {
-      const yy = 38 + row * ((H - 76) / 14);
+    for (let row = 0; row < 22; row++) {
+      const yy = 28 + row * ((H - 56) / 21);
       const speed = 115 + (row % 5) * 17;
       const travel = W + 220;
       const base = (t * speed + row * 79) % travel;
@@ -2268,6 +2510,29 @@
         );
         ctx.stroke();
       }
+    }
+
+    // Curved gust wisps make the wind direction readable at a glance.
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = "rgba(205,226,235,.62)";
+    ctx.lineWidth = 2.2;
+
+    for (let i = 0; i < 7; i++) {
+      const speed = 92 + i * 13;
+      const travel = W + 260;
+      const base = (t * speed + i * 131) % travel;
+      const x = dir > 0 ? base - 130 : W - (base - 130);
+      const y = 90 + ((i * 101 + t * 18) % (H - 180));
+      const len = 80 + (i % 3) * 24;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(
+        x + dir * len * 0.28, y - 12,
+        x + dir * len * 0.70, y + 12,
+        x + dir * len, y
+      );
+      ctx.stroke();
     }
 
     // Paper scraps flying through the whole viewport.
@@ -2767,6 +3032,10 @@
 
 
   document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" && STATE.windEvent) {
+      finishWindEvent();
+    }
+
     if (
       document.visibilityState === "visible" &&
       STATE.mode === MODE.PLAYING
@@ -2780,6 +3049,10 @@
   });
 
   playBtn.addEventListener("click", startGame);
+  reviveBtn.addEventListener("click", () => {
+    // Placeholder ad-continue hook: connect your ad SDK here before performRevive().
+    performRevive();
+  });
 
   function refreshMuteButton() {
     muteBtn.classList.toggle("muted", AudioSys.muted);
@@ -2814,10 +3087,7 @@
 
   // Initial draw
   document.getElementById("hud").style.display = "none";
-  panelText.innerHTML =
-    `Drag left and right. The ball follows your finger instantly.<br>` +
-    `Land clean, dodge spikes, survive the fall.<br><br>` +
-    `<b>Best: ${Math.floor(STATE.best)}</b>`;
+  panelText.innerHTML = `<b>Best: ${Math.floor(STATE.best)}</b>`;
   resetGame();
   render();
   requestAnimationFrame(frame);
