@@ -19,14 +19,13 @@
   body{display:grid;place-items:center}
   #gameWrap{
     position:relative;
-    width:min(100dvw, 600px);
-    height:min(100dvh, 800px);
-    aspect-ratio:3 / 4;
+    width:600px;
+    height:800px;
   }
   canvas{
     display:block;
-    width:100%;
-    height:100%;
+    width:600px;
+    height:800px;
     background:#f6f0df;
     border:3px solid #29332f;
     border-radius:18px;
@@ -44,13 +43,14 @@
       justify-items:center;
     }
     #gameWrap{
-      width:100dvw;
-      height:100dvh;
+      width:100dvw !important;
+      height:100dvh !important;
       max-width:none;
       max-height:none;
-      aspect-ratio:auto;
     }
     canvas{
+      width:100dvw !important;
+      height:100dvh !important;
       border:0;
       border-radius:0;
     }
