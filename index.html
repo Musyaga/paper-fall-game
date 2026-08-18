@@ -1147,7 +1147,11 @@
       perfectGranted: false,
 
       // visual feedback only
-      impact: 0
+      impact: 0,
+      wobble: 0,
+      wobbleVel: 0,
+      bounce: 0,
+      bounceVel: 0
     };
   }
 
@@ -1727,6 +1731,14 @@
 
       p.impact *= Math.max(0, 1 - 8.5 * dt);
 
+      // Subtle physically-inspired platform response:
+      // spring back from landings and side bumps.
+      p.wobbleVel += (-p.wobble * 52 - p.wobbleVel * 10.5) * dt;
+      p.wobble += p.wobbleVel * dt;
+
+      p.bounceVel += (-p.bounce * 86 - p.bounceVel * 15) * dt;
+      p.bounce += p.bounceVel * dt;
+
       if (p.type === TYPE.FRAGILE && p.fragileTriggered && !p.broken) {
         p.fragileTimer -= dt;
         p.breakAnim = Math.max(0, p.breakAnim - dt * 3.5);
@@ -1941,6 +1953,10 @@
           PLAYER.x = p.x + p.w + radius + skin;
         }
 
+        // Side bump gives the platform a tiny reactive wobble.
+        p.wobbleVel += best.nx * -5.5;
+        p.bounceVel += 1.2;
+
         PLAYER.targetX = PLAYER.x;
         PLAYER.prevX = PLAYER.x;
         PLAYER.windVX = 0;
@@ -1962,6 +1978,9 @@
         PLAYER.lastBouncePlatformId = p.id;
 
         p.impact = clamp(incomingSpeed / 760, 0.18, 0.72);
+        p.bounceVel += clamp(incomingSpeed / 300, 0.9, 3.0);
+        p.wobbleVel += clamp((PLAYER.x - (p.x + p.w * 0.5)) / (p.w * 0.5), -1, 1) * 4.6;
+
         PLAYER.squash = clamp(incomingSpeed / 760, 0.12, 0.48);
         PLAYER.stretch = 0;
         STATE.impactShake = Math.max(
@@ -2054,6 +2073,8 @@
           PLAYER.y = p.y - radius;
           if (PLAYER.vy > 0) PLAYER.vy = -PLAYER.jumpVelocity;
           PLAYER.lastBouncePlatformId = p.id;
+          p.bounceVel += 0.9;
+          p.wobbleVel += clamp((PLAYER.x - (p.x + p.w * 0.5)) / (p.w * 0.5), -1, 1) * 2.8;
         } else {
           PLAYER.y = p.y + p.h + radius + skin;
           if (PLAYER.vy < 0) PLAYER.vy = 0;
@@ -2330,62 +2351,57 @@
   }
 
   function drawPlatforms() {
-    // NORMAL / MOVING / FRAGILE body paths batched by fill.
-    const normalPath = new Path2D();
-    const movingPath = new Path2D();
-    const fragilePath = new Path2D();
-
-    for (const p of STATE.platforms) {
-      if (p.type === TYPE.SPIKE || p.broken) continue;
-
-      const path =
-        p.type === TYPE.NORMAL ? normalPath :
-        p.type === TYPE.MOVING ? movingPath :
-        fragilePath;
-
-      addRoundRectToPath(path, p.x, p.y, p.w, p.h, 6);
-    }
-
     const T = mixedTheme();
 
-    ctx.fillStyle = T.normal;
-    ctx.fill(normalPath);
-
-    ctx.fillStyle = T.moving;
-    ctx.fill(movingPath);
-
-    ctx.fillStyle = T.fragile;
-    ctx.fill(fragilePath);
-
-    ctx.strokeStyle = "#2f3833";
-    ctx.lineWidth = 2;
-
+    // Draw every platform with its own small wobble/tilt transform.
     for (const p of STATE.platforms) {
-      if (p.type === TYPE.SPIKE || p.broken) continue;
+      if (p.broken) continue;
 
       const visualSink = p.impact * 3.5;
-      roundRectPath(p.x, p.y + visualSink, p.w, Math.max(8, p.h - visualSink * 0.35), 6);
+      const tilt = clamp(p.wobble * 0.06, -0.09, 0.09);
+      const bounceY = p.bounce * 1.8 + visualSink;
+      const cx = p.x + p.w * 0.5;
+      const cy = p.y + p.h * 0.5;
 
-      if (p.type === TYPE.FRAGILE) {
-        ctx.setLineDash([6, 5]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else {
-        ctx.stroke();
-      }
+      if (p.type !== TYPE.SPIKE) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(tilt);
+        ctx.translate(-cx, -cy + bounceY);
 
-      if (p.type === TYPE.FRAGILE && p.fragileTriggered) {
-        ctx.strokeStyle = "#6b4a35";
+        ctx.fillStyle =
+          p.type === TYPE.NORMAL ? T.normal :
+          p.type === TYPE.MOVING ? T.moving :
+          T.fragile;
+
+        ctx.strokeStyle = "#2f3833";
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(p.x + p.w * 0.24, p.y + 1);
-        ctx.lineTo(p.x + p.w * 0.37, p.y + p.h - 1);
-        ctx.lineTo(p.x + p.w * 0.49, p.y + 3);
-        ctx.lineTo(p.x + p.w * 0.62, p.y + p.h - 2);
-        ctx.lineTo(p.x + p.w * 0.76, p.y + 2);
-        ctx.stroke();
-      }
 
+        roundRectPath(p.x, p.y, p.w, Math.max(8, p.h - visualSink * 0.35), 6);
+        ctx.fill();
+
+        if (p.type === TYPE.FRAGILE) {
+          ctx.setLineDash([6, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else {
+          ctx.stroke();
+        }
+
+        if (p.type === TYPE.FRAGILE && p.fragileTriggered) {
+          ctx.strokeStyle = "#6b4a35";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(p.x + p.w * 0.24, p.y + 1);
+          ctx.lineTo(p.x + p.w * 0.37, p.y + p.h - 1);
+          ctx.lineTo(p.x + p.w * 0.49, p.y + 3);
+          ctx.lineTo(p.x + p.w * 0.62, p.y + p.h - 2);
+          ctx.lineTo(p.x + p.w * 0.76, p.y + 2);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
     }
 
     // Broken fragile debris
@@ -2409,6 +2425,16 @@
     // Laser platforms: solid base + neon beam + glow particles.
     for (const p of STATE.platforms) {
       if (p.type !== TYPE.SPIKE || p.broken) continue;
+
+      const tilt = clamp(p.wobble * 0.06, -0.09, 0.09);
+      const bounceY = p.bounce * 1.6;
+      const cx = p.x + p.w * 0.5;
+      const cy = p.y + p.h * 0.5;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(tilt);
+      ctx.translate(-cx, -cy + bounceY);
 
       // Base
       ctx.fillStyle = "#6d7378";
@@ -2434,7 +2460,6 @@
 
       const pulse = 0.72 + 0.28 * Math.sin(STATE.time * 12 + p.x * 0.05);
 
-      ctx.save();
       ctx.lineCap = "round";
 
       // Outer glow
@@ -2479,8 +2504,9 @@
 
       ctx.restore();
     }
-  }
 
+    ctx.globalAlpha = 1;
+  }
 
   function drawWindZones() {
     const e = STATE.windEvent;
@@ -2710,24 +2736,52 @@
   function drawPlayer() {
     if (STATE.mode === MODE.DEATH && STATE.deathPhase === 1) return;
 
+    const horizontalMotion = PLAYER.x - PLAYER.prevX;
+    const targetDelta = PLAYER.targetX - PLAYER.x;
+
+    // Stronger and clearer directional read.
+    const moveIntent = Math.abs(horizontalMotion) < 0.03 ? 0 : clamp(horizontalMotion / 3.4, -1, 1);
+    const aimIntent = Math.abs(targetDelta) < 0.8 ? 0 : clamp(targetDelta / 22, -1, 1);
+    const horizontalIntent = clamp(moveIntent * 0.65 + aimIntent * 0.75, -1, 1);
+
+    const look = horizontalIntent * 7.4;
+    const tilt = horizontalIntent * 0.09;
+
     const sx = 1 + PLAYER.squash * 0.18 - PLAYER.stretch * 0.08;
     const sy = 1 - PLAYER.squash * 0.16 + PLAYER.stretch * 0.14;
 
-    // Minimal speed trail, only when moving fast vertically or in wind.
+    // Softer and more readable motion streaks.
     if (STATE.mode === MODE.PLAYING) {
-      const trailStrength = clamp((Math.abs(PLAYER.vy) - 260) / 500 + Math.abs(PLAYER.windVX) / 650, 0, 0.42);
-      if (trailStrength > 0.02) {
+      const trailStrength = clamp(
+        (Math.abs(PLAYER.vy) - 240) / 470 +
+        Math.abs(horizontalMotion) * 0.11 +
+        Math.abs(PLAYER.windVX) / 650,
+        0,
+        0.44
+      );
+
+      if (trailStrength > 0.03) {
         ctx.save();
-        ctx.globalAlpha = trailStrength * 0.28;
-        ctx.strokeStyle = "#58796d";
-        ctx.lineWidth = 3;
+        ctx.globalAlpha = trailStrength * 0.22;
+        ctx.strokeStyle = "#87a79d";
+        ctx.lineWidth = 3.2;
         ctx.lineCap = "round";
+
         for (let i = 0; i < 3; i++) {
-          const ox = (i - 1) * 7;
-          const tail = 12 + i * 5;
+          const ox = (i - 1) * 8;
+          const tail = 10 + i * 6;
+
           ctx.beginPath();
-          ctx.moveTo(PLAYER.x + ox, PLAYER.y - Math.sign(PLAYER.vy || 1) * PLAYER.radius);
-          ctx.lineTo(PLAYER.x + ox, PLAYER.y - Math.sign(PLAYER.vy || 1) * (PLAYER.radius + tail));
+          ctx.moveTo(
+            PLAYER.x + ox - horizontalIntent * 4,
+            PLAYER.y - PLAYER.radius * 0.18
+          );
+          ctx.quadraticCurveTo(
+            PLAYER.x + ox - horizontalIntent * 10,
+            PLAYER.y - Math.sign(PLAYER.vy || 1) * (PLAYER.radius * 0.7),
+            PLAYER.x + ox - horizontalIntent * 7,
+            PLAYER.y - Math.sign(PLAYER.vy || 1) * (PLAYER.radius + tail)
+          );
           ctx.stroke();
         }
         ctx.restore();
@@ -2736,81 +2790,145 @@
 
     ctx.save();
     ctx.translate(PLAYER.x, PLAYER.y);
+    ctx.rotate(tilt);
     ctx.scale(sx, sy);
 
     const T = mixedTheme();
+    const faceColor = "#1d2320";
 
+    // Outer ball
     ctx.fillStyle = T.player;
     ctx.strokeStyle = T.playerStroke;
-    ctx.lineWidth = 4.5;
-
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(0, 0, PLAYER.radius, 0, TAU);
     ctx.fill();
     ctx.stroke();
 
-    // Face color is deliberately theme-independent so it never disappears
-    // on dark or light palettes.
-    const faceColor = "#202522";
+    // Soft inner ring
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.arc(-1.2, -1.2, PLAYER.radius - 4.4, 0, TAU);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // Look in the REAL horizontal movement direction.
-    // Using this frame's actual x displacement makes the eyes follow
-    // the ball itself instead of the pointer target.
-    const horizontalMotion = PLAYER.x - PLAYER.prevX;
-    const horizontalIntent =
-      Math.abs(horizontalMotion) < 0.05
-        ? 0
-        : clamp(horizontalMotion / 4.5, -1, 1);
+    // Soft highlights
+    ctx.fillStyle = "rgba(255,255,255,.44)";
+    ctx.beginPath();
+    ctx.arc(-7, -8, 5.6, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-2, -12, 2.6, 0, TAU);
+    ctx.fill();
 
-    const look = horizontalIntent * 5.4;
+    // Gentle lower tint
+    ctx.fillStyle = "rgba(30,40,36,.07)";
+    ctx.beginPath();
+    ctx.ellipse(0, 8, PLAYER.radius * 0.62, PLAYER.radius * 0.32, 0, 0, TAU);
+    ctx.fill();
 
     const fallingFast = PLAYER.vy > 390;
     const fallingVeryFast = PLAYER.vy > 560;
+    const fallingExtreme = PLAYER.vy > 760;
 
-    ctx.fillStyle = faceColor;
+    // Eyes open dramatically on long falls.
+    const eyeYOffset = fallingExtreme ? -0.8 : (fallingFast ? -1.5 : -2.2);
+    const eyeOuterW = fallingExtreme ? 6.6 : (fallingFast ? 5.4 : 4.7);
+    const eyeOuterH = fallingExtreme ? 8.5 : (fallingVeryFast ? 6.9 : (fallingFast ? 6.1 : 5.5));
 
-    if (fallingFast) {
-      // Eyes open wider when the ball is falling from high up.
-      const eyeW = fallingVeryFast ? 3.6 : 3.0;
-      const eyeH = fallingVeryFast ? 4.4 : 3.6;
-
+    function drawEye(cx) {
       ctx.save();
-      ctx.translate(-6 + look, -2.5);
-      ctx.scale(eyeW / 2.2, eyeH / 2.2);
+      ctx.translate(cx + look * 0.35, eyeYOffset);
+      ctx.scale(eyeOuterW / 4.2, eyeOuterH / 4.2);
+      ctx.fillStyle = "#fffef9";
       ctx.beginPath();
-      ctx.arc(0, 0, 2.2, 0, TAU);
+      ctx.arc(0, 0, 4.2, 0, TAU);
       ctx.fill();
       ctx.restore();
 
-      ctx.save();
-      ctx.translate(6 + look, -2.5);
-      ctx.scale(eyeW / 2.2, eyeH / 2.2);
+      ctx.fillStyle = faceColor;
       ctx.beginPath();
-      ctx.arc(0, 0, 2.2, 0, TAU);
+      ctx.arc(
+        cx + look,
+        eyeYOffset + (fallingFast ? 0.35 : 0),
+        fallingExtreme ? 1.45 : (fallingVeryFast ? 1.8 : 2.0),
+        0,
+        TAU
+      );
       ctx.fill();
-      ctx.restore();
-    } else {
+
+      ctx.fillStyle = "rgba(255,255,255,.85)";
       ctx.beginPath();
-      ctx.arc(-6 + look, -2.5, 2.6, 0, TAU);
-      ctx.arc(6 + look, -2.5, 2.6, 0, TAU);
+      ctx.arc(cx + look + 0.55, eyeYOffset - 0.75, 0.65, 0, TAU);
       ctx.fill();
     }
 
+    drawEye(-7.2);
+    drawEye(7.2);
+
+    // Brows/lids
+    ctx.strokeStyle = "rgba(29,35,32,.65)";
+    ctx.lineWidth = 1.7;
+    ctx.lineCap = "round";
+
+    if (fallingExtreme) {
+      ctx.strokeStyle = "rgba(29,35,32,.45)";
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(-11.3 + look * 0.22, -8.7 - Math.abs(horizontalIntent) * 0.5);
+    ctx.quadraticCurveTo(
+      -7.0 + look * 0.3,
+      -11.0 - horizontalIntent * 0.7,
+      -3.0 + look * 0.28,
+      -8.1
+    );
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(3.0 + look * 0.28, -8.1);
+    ctx.quadraticCurveTo(
+      7.0 + look * 0.3,
+      -11.0 + horizontalIntent * 0.7,
+      11.3 + look * 0.22,
+      -8.7 - Math.abs(horizontalIntent) * 0.5
+    );
+    ctx.stroke();
+
+    // Mouth
     ctx.strokeStyle = faceColor;
     ctx.fillStyle = faceColor;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.8;
 
     if (fallingFast) {
-      // Open mouth on a long fall.
       ctx.beginPath();
-      ctx.ellipse(0, 5.5, fallingVeryFast ? 3.1 : 2.5, fallingVeryFast ? 3.7 : 3.0, 0, 0, TAU);
+      ctx.ellipse(
+        horizontalIntent * 1.2,
+        fallingExtreme ? 7.3 : 6.8,
+        fallingExtreme ? 4.4 : (fallingVeryFast ? 3.8 : 3.0),
+        fallingExtreme ? 5.4 : (fallingVeryFast ? 4.6 : 3.8),
+        0,
+        0,
+        TAU
+      );
       ctx.stroke();
     } else {
       ctx.beginPath();
-      ctx.moveTo(-3, 4);
-      ctx.quadraticCurveTo(0, 6, 3, 4);
+      ctx.moveTo(-4.1 + horizontalIntent * 0.7, 5.2);
+      ctx.quadraticCurveTo(horizontalIntent * 1.4, 7.7, 4.1 + horizontalIntent * 0.7, 5.2);
       ctx.stroke();
     }
+
+    // Soft blush
+    ctx.fillStyle = "rgba(255,148,148,.14)";
+    ctx.beginPath();
+    ctx.ellipse(-11.5, 2.8, 2.5, 1.5, -0.15, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(11.5, 2.8, 2.5, 1.5, 0.15, 0, TAU);
+    ctx.fill();
 
     if (STATE.mode === MODE.DEATH && STATE.deathPhase === 0) {
       const k = clamp(STATE.deathTimer / 0.48, 0, 1);
