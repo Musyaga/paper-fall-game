@@ -291,15 +291,33 @@
   const muteBtn = document.getElementById("muteBtn");
 
   const DPR = Math.min(window.devicePixelRatio || 1, 1.4);
-  const CSS_W = 600;
-  const CSS_H = 800;
+  const IS_MOBILE = window.matchMedia("(max-width:700px)").matches;
 
-  canvas.width = Math.round(CSS_W * DPR);
-  canvas.height = Math.round(CSS_H * DPR);
+  // Keep the PC world width. On mobile only reveal more vertical world
+  // instead of stretching the PC artwork.
+  const W = 600;
+  const mobileViewportW = Math.max(320, window.innerWidth);
+  const mobileViewportH = Math.max(
+    480,
+    Math.floor(window.visualViewport?.height || window.innerHeight)
+  );
+  const H = IS_MOBILE
+    ? Math.round(W * (mobileViewportH / mobileViewportW))
+    : 800;
+
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  const W = CSS_W;
-  const H = CSS_H;
+  if (IS_MOBILE) {
+    canvas.style.width = "100dvw";
+    canvas.style.height = "100dvh";
+    gameWrap.style.width = "100dvw";
+    gameWrap.style.height = "100dvh";
+  } else {
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+  }
   const TAU = Math.PI * 2;
 
   const FIXED_DT = 1 / 120;
@@ -1193,7 +1211,7 @@
     STATE.nextPlatformId = 1;
 
     const startW = 150;
-    const startY = H * 0.66;
+    const startY = IS_MOBILE ? Math.min(H * 0.58, 610) : H * 0.66;
     STATE.platforms.push(
       createPlatform(TYPE.NORMAL, W * 0.5 - startW * 0.5, startY, startW)
     );
@@ -1213,7 +1231,8 @@
     }
 
     let spawnGuard = 0;
-    while (lowestY < H + 420 && spawnGuard < 5) {
+    const platformBuffer = IS_MOBILE ? Math.max(420, H * 0.42) : 420;
+    while (lowestY < H + platformBuffer && spawnGuard < 7) {
       spawnNextPlatform();
       const newest = STATE.platforms[STATE.platforms.length - 1];
       lowestY = newest ? newest.y : lowestY;
@@ -1221,7 +1240,11 @@
     }
 
     // Emergency density guard: never let the run feel empty.
-    while (STATE.platforms.length < 7) {
+    const minVisiblePlatforms = IS_MOBILE
+      ? Math.max(7, Math.ceil(H / 165))
+      : 7;
+
+    while (STATE.platforms.length < minVisiblePlatforms) {
       spawnNextPlatform();
     }
   }
@@ -1404,7 +1427,7 @@
     PLAYER.targetX = W * 0.5;
     PLAYER.prevX = PLAYER.x;
 
-    PLAYER.y = H * 0.32;
+    PLAYER.y = IS_MOBILE ? Math.min(H * 0.27, 300) : H * 0.32;
     PLAYER.prevY = PLAYER.y;
     PLAYER.vy = 0;
     PLAYER.alive = true;
@@ -1579,7 +1602,7 @@
     finishWindEvent();
 
     // Remove hazards close to the revive area so the restart is genuinely safe.
-    const safeY = H * 0.68;
+    const safeY = IS_MOBILE ? Math.min(H * 0.62, 690) : H * 0.68;
     STATE.platforms = STATE.platforms.filter(p =>
       p.y < safeY - 150 || p.y > safeY + 150
     );
@@ -2160,7 +2183,7 @@
       // Keep the ball centered during tutorial, but preserve targetX so its
       // eyes can follow the direction the user drags before starting.
       PLAYER.x = W * 0.5;
-      PLAYER.y = H * 0.34 + Math.sin(STATE.tutorialTime * 2.3) * 4;
+      PLAYER.y = (IS_MOBILE ? Math.min(H * 0.29, 320) : H * 0.34) + Math.sin(STATE.tutorialTime * 2.3) * 4;
 
       updateTheme(dt);
       updateParticles(dt);
@@ -2995,6 +3018,12 @@
     render();
     requestAnimationFrame(frame);
   }
+
+
+  window.addEventListener("orientationchange", () => {
+    // Recalculate the logical viewport cleanly after rotation.
+    setTimeout(() => location.reload(), 120);
+  });
 
   // ============================================================
   // 15) INPUT — TOUCH / MOUSE 1:1
